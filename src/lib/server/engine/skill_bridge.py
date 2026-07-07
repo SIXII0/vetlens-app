@@ -47,13 +47,39 @@ def build_materials_index(input_data: dict) -> dict:
     pet_birth = pet_info.get("birthDate", "")
     pet_weight = pet_info.get("weightKg", "")
 
+    # 将项目按类别分组（匹配 skill 的 BILL_CATEGORIES）
+    check_items = []   # 检查类
+    med_items = []     # 药品类
+    treat_items = []   # 治疗类
+    supply_items = []  # 耗材类
+    service_items = [] # 服务类
+    other_items = []   # 其他
+
+    for item in items:
+        name = item['name']
+        amount = item['amount']
+        lower = name.lower()
+        if any(kw in lower for kw in ['血','检','测','超','cr','x','ct','dr','b超','化验','镜']):
+            check_items.append(item)
+        elif any(kw in lower for kw in ['药','针','剂','片','丸','胶囊','液','膏','霉素','西林','头孢','沙星','替尼','唑','芬','康','宁','坦','松','平']):
+            med_items.append(item)
+        elif any(kw in lower for kw in ['手术','处置','输液','缝合','清创','麻醉','拔牙','冲洗']):
+            treat_items.append(item)
+        elif any(kw in lower for kw in ['导管','留置针','敷料','耗材','纱布','注射器','棉','手套']):
+            supply_items.append(item)
+        elif any(kw in lower for kw in ['挂号','诊疗','护理','服务','会诊','住院','观察']):
+            service_items.append(item)
+        elif any(kw in lower for kw in ['疫苗','驱虫','绝育','体检','美容','洗澡','剃毛','剪指甲']):
+            service_items.append(item)  # 预防/非医疗性服务
+        else:
+            other_items.append(item)
+
     text_lines = [
         f"宠物医院账单",
         f"医院: {hospital_name}",
         f"日期: {visit_date}",
         f"宠物: {pet_name}",
     ]
-    # 加入宠物基本信息
     if pet_species:
         text_lines.append(f"种类: {pet_species}")
     if pet_breed:
@@ -64,33 +90,47 @@ def build_materials_index(input_data: dict) -> dict:
         text_lines.append(f"出生日期: {pet_birth}")
     if pet_weight:
         text_lines.append(f"体重: {pet_weight} kg")
-
     if diagnosis:
         text_lines.append(f"诊断: {diagnosis}")
 
-    text_lines.append("")
-    text_lines.append("费用明细:")
-    for item in items:
-        text_lines.append(f"{item['name']}  ¥{item['amount']:.2f}")
+    # 按类别输出费用明细
+    def write_category(title, cat_items):
+        if not cat_items:
+            return
+        text_lines.append(f"\n{title}:")
+        for it in cat_items:
+            text_lines.append(f"  {it['name']}  ¥{it['amount']:.2f}")
 
-    text_lines.append(f"合计 ¥{total_amount:.2f}")
+    write_category("检查", check_items)
+    write_category("药品", med_items)
+    write_category("治疗", treat_items)
+    write_category("耗材", supply_items)
+    write_category("服务", service_items)
+    write_category("其他", other_items)
+
+    text_lines.append(f"\n合计 ¥{total_amount:.2f}")
+    # 附上 Agent 分析结果（如果有的话，丰富报告内容）
+    agent_analysis = input_data.get("analysisText") or ""
+    if agent_analysis and len(agent_analysis) > 50:
+        text_lines.append(f"\n--- AI 分析参考 ---\n{agent_analysis[:3000]}")
 
     text = "\n".join(text_lines)
 
-    material = {
+    # 主材料：bill
+    materials.append({
         "id": "mat_001_vetlens",
         "type": "bill",
         "pet_name": pet_name if pet_name != "待确认" else None,
         "clinic": hospital_name or None,
         "date": visit_date or None,
         "source_file": "vetlens_bill_data.md",
-        "raw_path": "",
-        "cleaned_markdown_path": "",
-        "confidence": 0.95,
-        "status": "extracted",
+        "raw_path": "", "cleaned_markdown_path": "",
+        "confidence": 0.95, "status": "extracted",
         "text": text,
-    }
-    materials.append(material)
+    })
+
+    # 注：不额外创建 lab_report / prescription 材料，避免 skill 重复计数
+    # 所有项目已在 bill 材料中按类别归类
 
     # 如果有宠物档案信息，添加为 pet_profile 材料
     if pet_species or pet_breed:
@@ -145,6 +185,7 @@ def main():
     parser.add_argument("--report-type", default="auto", help="Report type")
     parser.add_argument("--pet-name", default=None, help="Pet name override")
     parser.add_argument("--pdf-policy", default="required", choices=["attempt", "required", "skip"])
+    parser.add_argument("--markdown", default=None, type=Path, help="预生成的 Markdown 文件路径（跳过 build_report_markdown）")
     args = parser.parse_args()
 
     # 读取输入
@@ -177,8 +218,17 @@ def main():
 
     pet_name = args.pet_name or input_data.get("petName") or UNKNOWN_TEXT
 
-    # 1. 生成 Markdown 报告（使用 skill 内置逻辑）
-    report_md, warnings = build_report_markdown(report_type, pet_name, materials_index)
+    # 1. 生成/加载 Markdown 报告
+    warnings = []
+    if args.markdown and args.markdown.exists():
+        # 使用外部预生成的 Markdown（来自 Agent 管线或 TypeScript reporter）
+        report_md = args.markdown.read_text(encoding="utf-8")
+        print(f"[skill_bridge] 使用预生成 Markdown ({len(report_md)} 字符)")
+    else:
+        # 使用 skill 内置的 build_report_markdown
+        report_md, warnings = build_report_markdown(report_type, pet_name, materials_index)
+        print(f"[skill_bridge] 使用 skill 内置 Markdown 生成")
+
     (args.output_dir / "report.md").write_text(report_md, encoding="utf-8")
 
     # 2. 生成 LaTeX（使用 skill 内置模板）
@@ -245,12 +295,11 @@ def main():
 
 def _render_tex(report_type: str, pet_name: str, body_md: str) -> str:
     """使用 pet-vault-skill 内置 LaTeX 模板渲染 report.tex"""
-    from jinja2 import Environment, BaseLoader, TemplateNotFound
+    from jinja2 import Environment, BaseLoader
 
     SKILL_DIR = SKILL_SCRIPTS.parent
     templates_dir = SKILL_DIR / "templates"
 
-    # 读取模板文件
     styles_path = templates_dir / "styles.tex.j2"
     template_map = {
         "general": "report_general.tex.j2",
@@ -264,26 +313,19 @@ def _render_tex(report_type: str, pet_name: str, body_md: str) -> str:
 
     template_name = template_map.get(report_type, "report_general.tex.j2")
     template_path = templates_dir / template_name
-
     if not template_path.exists():
-        # 回退到通用模板
         template_path = templates_dir / "report_general.tex.j2"
 
     styles = styles_path.read_text(encoding="utf-8") if styles_path.exists() else ""
     template_src = template_path.read_text(encoding="utf-8")
 
-    # 将 Markdown 转为 LaTeX body
+    # 将 Markdown 转为 LaTeX body（skill 内置函数）
     latex_body = markdown_to_latex_body(body_md)
 
     # Jinja2 渲染
     env = Environment(loader=BaseLoader())
-    template = env.from_string(template_src)
-
-    return template.render(
-        styles=styles,
-        pet_name=pet_name,
-        body=latex_body,
-    )
+    tpl = env.from_string(template_src)
+    return tpl.render(styles=styles, pet_name=pet_name, body=latex_body)
 
 
 if __name__ == "__main__":

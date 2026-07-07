@@ -69,6 +69,8 @@ export interface PipelineOptions {
   visitDate?: string;
   /** 分析引擎的解释文本（可选，作为额外材料） */
   analysisText?: string;
+  /** Agent 管线预生成的 Markdown（跳过 skill 内置生成，只做 LaTeX + PDF） */
+  preGeneratedMarkdown?: string;
   /** 宠物档案信息 */
   petInfo?: Record<string, unknown>;
   /** 诊断结果 */
@@ -118,12 +120,19 @@ export async function runPetVaultPipeline(opts: PipelineOptions): Promise<Pipeli
         amount: it.amount,
       })),
       petInfo: opts.petInfo || undefined,
+      analysisText: opts.analysisText || undefined,
     };
 
     const inputFile = path.join(outputDir, 'input_data.json');
     fs.writeFileSync(inputFile, JSON.stringify(inputData, null, 2), 'utf-8');
 
-    // 构建命令行参数（使用 skill_bridge.py 包装脚本）
+    // 如果有预生成的 Markdown（来自 Agent 管线），写入文件供 skill_bridge 使用
+    if (opts.preGeneratedMarkdown) {
+      const mdPath = path.join(outputDir, 'agent_report.md');
+      fs.writeFileSync(mdPath, opts.preGeneratedMarkdown, 'utf-8');
+    }
+
+    // 构建命令行参数
     const args = [
       BRIDGE_SCRIPT,
       '--input-data', inputFile,
@@ -132,6 +141,12 @@ export async function runPetVaultPipeline(opts: PipelineOptions): Promise<Pipeli
       '--pet-name', opts.petName || '待确认',
       '--pdf-policy', opts.pdfPolicy || 'required',
     ];
+
+    // 如果有预生成 Markdown，传递给 skill_bridge
+    const agentMdPath = path.join(outputDir, 'agent_report.md');
+    if (fs.existsSync(agentMdPath)) {
+      args.push('--markdown', agentMdPath);
+    }
 
     // 构建环境变量（包含 xelatex 路径）
     const env = { ...process.env };

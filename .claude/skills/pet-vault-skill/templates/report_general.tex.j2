@@ -1,17 +1,21 @@
 {{ styles }}
 
 \begin{document}
-
+% ── Cover page（匹配 PetVault 参考格式） ──
+\thispagestyle{empty}
+\vspace*{5cm}
 \begin{center}
-  {\LARGE\bfseries PetVault Care Report}\\[5pt]
-  {\Large\bfseries {{ title }}}\\[5pt]
-  {\large {{ pet_name }}}
+{\LARGE\bfseries PetVault Bill Explanation}\\[8pt]
+{\Large {{ pet_name }}}
 \end{center}
-
-\vspace{0.55em}
+\vfill
+\begin{center}
+{\small PetVault \hspace{1.5cm} Local Care Archive}
+\end{center}
+\newpage
+% ── TOC ──
 \tableofcontents
 \newpage
-
+% ── Body ──
 {{ body }}
-
 \end{document}
