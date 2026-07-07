@@ -1,63 +1,50 @@
 /**
- * 报告生成引擎 —— 基于 pet-vault-skill 报告编排模式
+ * 报告生成引擎 —— 严格对齐 pet-vault-skill 报告编排规范
  *
- * 将分析结果组合为结构化 Markdown 报告，支持7种报告类型：
- *   bill_explain / claim_check / timeline / medical_summary
- *   chronic_review / clinic_client_summary / general
+ * 核心原则（来自 SKILL.md）：
+ * - source list first, user-readable conclusions before details
+ * - missing/uncertain data called out explicitly
+ * - facts / organized findings / suggestions / missing data / uncertain fields 分离
+ * - medical content does not replace veterinary judgment
+ * - claim content does not promise reimbursement
  *
- * 输出包含：
- *   - report.md  (Markdown 正文)
- *   - manifest.json (报告元数据)
- *   - qa_result.json (质量检查结果)
+ * 7 种报告类型各有 required sections（来自 config/pet_care_report_harness.yaml）
  */
 
 import type { AnalyzedItem, AnalysisSummary } from './types';
 import { v4 as uuid } from 'uuid';
 
-// ---- 报告类型定义 ----
+// ---- 报告类型 ----
 
 export type ReportType =
-  | 'general'
-  | 'medical_summary'
-  | 'bill_explain'
-  | 'claim_check'
-  | 'timeline'
-  | 'chronic_review'
-  | 'clinic_client_summary';
+  | 'general' | 'medical_summary' | 'bill_explain' | 'claim_check'
+  | 'timeline' | 'chronic_review' | 'clinic_client_summary';
 
 export interface ReportManifest {
-  reportId: string;
-  reportType: ReportType;
-  petName: string;
-  title: string;
-  generatedAt: string;
-  sourceRecordId?: string;
-  materialCount: number;
-  routingReason: string;
+  reportId: string; reportType: ReportType;
+  petName: string; title: string; generatedAt: string;
+  sourceRecordId?: string; materialCount: number; routingReason: string;
 }
 
-export interface QaResult {
-  passed: boolean;
-  checks: QaCheck[];
-  warnings: string[];
-}
-
-export interface QaCheck {
-  rule: string;
-  passed: boolean;
-  detail: string;
-}
+export interface QaResult { passed: boolean; checks: QaCheck[]; warnings: string[]; }
+export interface QaCheck { rule: string; passed: boolean; detail: string; }
 
 export interface ReportResult {
-  reportId: string;
-  reportType: ReportType;
-  markdown: string;
-  manifest: ReportManifest;
-  qaResult: QaResult;
-  title: string;
+  reportId: string; reportType: ReportType;
+  markdown: string; manifest: ReportManifest; qaResult: QaResult; title: string;
 }
 
-// ---- 报告标题映射 ----
+export interface ReportInput {
+  petName?: string; visitDate?: string; hospitalName?: string;
+  visitReason?: string; diagnosis?: string; city?: string;
+  items?: AnalyzedItem[]; summary?: AnalysisSummary; totalAmount?: number;
+  reportType?: ReportType | 'auto'; requestText?: string;
+  insuranceResult?: Record<string, unknown>; rawOcrText?: string; recordId?: string;
+  // 宠物档案信息（用于 pet profile 章节）
+  petInfo?: { species?: string; breed?: string; gender?: string; birthDate?: string; weightKg?: number };
+}
+
+// ---- 标题 + 免责 ----
 
 const REPORT_TITLES: Record<ReportType, string> = {
   general: '宠物资料综合整理报告',
@@ -69,673 +56,615 @@ const REPORT_TITLES: Record<ReportType, string> = {
   clinic_client_summary: '医院端客户解释材料草稿',
 };
 
-// ---- 禁止出现在报告中的术语 ----
+const FORBIDDEN_TERMS = ['PRD','Harness','HMW','POV','产品需求文档','设计提案约束','开发者校验'];
 
-const FORBIDDEN_TERMS = [
-  'PRD',
-  'Harness',
-  'HMW',
-  'POV',
-  '产品需求文档',
-  '设计提案约束',
-  '开发者校验',
-];
+const MEDICAL_DISCLAIMER =
+  '> ⚠️ **医疗免责声明**：本报告旨在整理和解释医疗资料，不替代兽医诊断。如有健康疑虑，请咨询执业兽医。';
 
-// ---- 必须包含的免责声明 ----
+const INSURANCE_DISCLAIMER =
+  '> ⚠️ **理赔说明**：本报告检查理赔材料完整性并提示风险点，不承诺理赔结果。实际赔付以保险公司审核为准。';
 
-const MEDICAL_DISCLAIMER = '> ⚠️ **医疗免责声明**：本报告旨在整理和解释医疗资料，不替代兽医诊断。如有健康疑虑，请咨询执业兽医。';
+const CLINIC_DRAFT_DISCLAIMER =
+  '> ⚠️ **草稿声明**：本文为 AI 生成的客户解释材料草稿，须经执业兽医审核确认后方可作为正式沟通材料使用。';
 
-const INSURANCE_DISCLAIMER = '> ⚠️ **理赔说明**：本报告检查理赔材料完整性并提示风险点，不承诺理赔结果。实际赔付以保险公司审核为准。';
+const BILLING_BOUNDARY =
+  '> 💡 **说明**：费用分类和价格参考基于公开数据整理，不构成对医院收费合理性的判断。不同医院的设备、医生资历和药品品牌存在合理差异。';
 
-const CLINIC_DRAFT_DISCLAIMER = '> ⚠️ **草稿声明**：本文为 AI 生成的客户解释材料草稿，须经执业兽医审核确认后方可作为正式沟通材料使用。';
+const UNKNOWN_LABEL = '待确认';
 
-// ---- 报告类型自动选择 ----
+// ---- 路由 ----
 
-interface RoutingRule {
-  keywords: string[];
-  materialKeywords: string[];
-  reportType: ReportType;
+function selectReportType(text?: string): { reportType: ReportType; reason: string } {
+  const t = (text || '').toLowerCase();
+  if (/账单|费用|发票|收据|收费|bill|invoice/i.test(t)) return { reportType:'bill_explain', reason:'关键词匹配-账单' };
+  if (/理赔|报销|保险|保单|claim|insurance/i.test(t)) return { reportType:'claim_check', reason:'关键词匹配-理赔' };
+  if (/转院|转诊|病历汇总|资料包|timeline|referral/i.test(t)) return { reportType:'timeline', reason:'关键词匹配-时间线' };
+  if (/慢病|慢性|月度|复查|长期|chronic/i.test(t)) return { reportType:'chronic_review', reason:'关键词匹配-慢病' };
+  if (/检查报告|化验|血常规|生化|超声|lab report/i.test(t)) return { reportType:'medical_summary', reason:'关键词匹配-医疗报告' };
+  return { reportType:'general', reason:'默认综合报告' };
 }
 
-const ROUTING_RULES: RoutingRule[] = [
-  {
-    keywords: ['账单', '费用', '发票', '收据', '收费', 'bill', 'invoice', 'receipt', 'expense'],
-    materialKeywords: ['bill', 'invoice'],
-    reportType: 'bill_explain',
-  },
-  {
-    keywords: ['理赔', '报销', '保险', '保单', 'claim', 'insurance', 'reimbursement'],
-    materialKeywords: ['insurance_policy', 'claim_document'],
-    reportType: 'claim_check',
-  },
-  {
-    keywords: ['转院', '转诊', '就诊记录', '病历汇总', '资料包', 'timeline', 'referral'],
-    materialKeywords: [],
-    reportType: 'timeline',
-  },
-  {
-    keywords: ['慢病', '慢性', '月度', '复查', '长期', 'chronic'],
-    materialKeywords: [],
-    reportType: 'chronic_review',
-  },
-  {
-    keywords: ['检查报告', '化验', '血常规', '生化', '超声', 'lab report', 'medical report'],
-    materialKeywords: ['lab_report', 'medical_report'],
-    reportType: 'medical_summary',
-  },
-];
+// ---- Manifest ----
 
-/**
- * 根据用户请求文本和材料类型自动选择报告类型
- */
-export function selectReportType(
-  requestText?: string,
-  materialTypes?: string[]
-): { reportType: ReportType; reason: string } {
-  const reqLower = (requestText || '').toLowerCase();
-  const matTypes = materialTypes || [];
-
-  for (const rule of ROUTING_RULES) {
-    const keywordMatch = rule.keywords.some(kw => reqLower.includes(kw.toLowerCase()));
-    const matMatch = rule.materialKeywords.length === 0 ||
-      rule.materialKeywords.some(mt => matTypes.includes(mt));
-
-    if (keywordMatch && matMatch) {
-      return {
-        reportType: rule.reportType,
-        reason: `关键词匹配: "${rule.keywords.find(kw => reqLower.includes(kw.toLowerCase())) || rule.materialKeywords[0]}"`,
-      };
-    }
-  }
-
-  // 有材料但未匹配特定类型 → general
-  if (matTypes.length > 0) {
-    return { reportType: 'general', reason: '多种材料混合，使用综合报告' };
-  }
-
-  return { reportType: 'general', reason: '默认通用报告' };
-}
-
-// ---- 核心报告生成 ----
-
-export interface ReportInput {
-  /** 宠物名称 */
-  petName?: string;
-  /** 就诊日期 */
-  visitDate?: string;
-  /** 医院名称 */
-  hospitalName?: string;
-  /** 就诊原因 */
-  visitReason?: string;
-  /** 诊断结果 */
-  diagnosis?: string;
-  /** 城市 */
-  city?: string;
-  /** 分析后的逐项结果 */
-  items?: AnalyzedItem[];
-  /** 分析摘要 */
-  summary?: AnalysisSummary;
-  /** 总费用 */
-  totalAmount?: number;
-  /** 报告类型（默认 auto） */
-  reportType?: ReportType | 'auto';
-  /** 用户原始请求 */
-  requestText?: string;
-  /** 保险预检结果 */
-  insuranceResult?: Record<string, unknown>;
-  /** OCR 原始文本（作为材料参考） */
-  rawOcrText?: string;
-  /** 就诊记录 ID */
-  recordId?: string;
-}
-
-/**
- * 创建报告清单
- */
-export function createManifest(
-  reportId: string,
-  reportType: ReportType,
-  petName: string,
-  routingReason: string,
-  materialCount: number,
-  sourceRecordId?: string
+function createManifest(
+  reportId: string, reportType: ReportType, petName: string,
+  reason: string, materialCount: number, recordId?: string
 ): ReportManifest {
-  return {
-    reportId,
-    reportType,
-    petName: petName || '待确认',
-    title: REPORT_TITLES[reportType],
-    generatedAt: new Date().toISOString(),
-    sourceRecordId,
-    materialCount,
-    routingReason,
-  };
+  return { reportId, reportType, petName: petName || UNKNOWN_LABEL,
+    title: REPORT_TITLES[reportType], generatedAt: new Date().toISOString(),
+    sourceRecordId: recordId, materialCount, routingReason: reason };
 }
 
-/**
- * 执行质量检查
- */
-export function runQaChecks(
-  markdown: string,
-  reportType: ReportType,
-  items?: AnalyzedItem[]
-): QaResult {
-  const checks: QaCheck[] = [];
-  const warnings: string[] = [];
+// ---- QA ----
 
-  // 1. 检查禁止术语
-  const foundForbidden: string[] = [];
-  for (const term of FORBIDDEN_TERMS) {
-    if (markdown.includes(term)) {
-      foundForbidden.push(term);
-    }
+function runQa(md: string, type: ReportType, items?: AnalyzedItem[]): QaResult {
+  const checks: QaCheck[] = []; const warnings: string[] = [];
+  const found = FORBIDDEN_TERMS.filter(t => md.includes(t));
+  checks.push({ rule:'禁止术语', passed:found.length===0,
+    detail:found.length===0?'通过':`发现: ${found.join(',')}` });
+  for (const s of ['使用材料','事实','整理结果','待确认','后续建议']) {
+    const ok = md.includes(`## ${s}`);
+    checks.push({ rule:`章节:${s}`, passed:ok, detail:ok?'已包含':'缺失' });
+    if (!ok) warnings.push(`缺少必要章节: ${s}`);
   }
-  checks.push({
-    rule: '禁止术语检查',
-    passed: foundForbidden.length === 0,
-    detail: foundForbidden.length === 0
-      ? '未发现内部开发术语'
-      : `发现禁止术语: ${foundForbidden.join(', ')}`,
-  });
-
-  // 2. 检查必要章节
-  const requiredSections = ['使用材料', '事实', '整理结果', '待确认', '后续建议'];
-  for (const section of requiredSections) {
-    const hasSection = markdown.includes(`## ${section}`);
-    checks.push({
-      rule: `必要章节: ${section}`,
-      passed: hasSection,
-      detail: hasSection ? '已包含' : '缺失',
-    });
-    if (!hasSection) warnings.push(`缺少必要章节: ${section}`);
+  if (type!=='clinic_client_summary') {
+    const ok = md.includes('医疗免责声明');
+    checks.push({ rule:'医疗免责声明', passed:ok, detail:ok?'已包含':'缺失' });
+    if (!ok) warnings.push('缺少医疗免责声明');
   }
-
-  // 3. 医疗免责声明（非 B 端报告需要）
-  if (reportType !== 'clinic_client_summary') {
-    const hasMedicalDisclaimer = markdown.includes('医疗免责声明');
-    checks.push({
-      rule: '医疗免责声明',
-      passed: hasMedicalDisclaimer,
-      detail: hasMedicalDisclaimer ? '已包含' : '缺失',
-    });
-    if (!hasMedicalDisclaimer) warnings.push('缺少医疗免责声明');
+  if (type==='claim_check') {
+    const ok = md.includes('理赔说明');
+    checks.push({ rule:'理赔免责声明', passed:ok, detail:ok?'已包含':'缺失' });
+    if (!ok) warnings.push('缺少理赔免责声明');
   }
-
-  // 4. 理赔报告需要理赔免责声明
-  if (reportType === 'claim_check') {
-    const hasInsuranceDisclaimer = markdown.includes('理赔说明');
-    checks.push({
-      rule: '理赔免责声明',
-      passed: hasInsuranceDisclaimer,
-      detail: hasInsuranceDisclaimer ? '已包含' : '缺失',
-    });
-    if (!hasInsuranceDisclaimer) warnings.push('缺少理赔免责声明');
+  if (type==='clinic_client_summary') {
+    const ok = md.includes('草稿声明');
+    checks.push({ rule:'B端草稿声明', passed:ok, detail:ok?'已包含':'缺失' });
+    if (!ok) warnings.push('缺少B端草稿声明');
   }
-
-  // 5. B 端草稿需要人工审核声明
-  if (reportType === 'clinic_client_summary') {
-    const hasDraftDisclaimer = markdown.includes('草稿声明');
-    checks.push({
-      rule: 'B 端草稿声明',
-      passed: hasDraftDisclaimer,
-      detail: hasDraftDisclaimer ? '已包含' : '缺失',
-    });
-    if (!hasDraftDisclaimer) warnings.push('缺少 B 端草稿声明');
+  const uncertain = (md.match(new RegExp(UNKNOWN_LABEL,'g'))||[]).length;
+  checks.push({ rule:'不确定项标注', passed:true,
+    detail:uncertain>0?`${uncertain}处待确认`:'无待确认项' });
+  if (items?.length) {
+    const n = items.filter(i=>!i.isUnknown).length;
+    checks.push({ rule:'来源可追溯', passed:n>0, detail:`${n}/${items.length}项可追溯` });
   }
-
-  // 6. 检查是否有未确认字段
-  const uncertainCount = (markdown.match(/待确认/g) || []).length;
-  checks.push({
-    rule: '不确定项标注',
-    passed: true,
-    detail: uncertainCount > 0
-      ? `已标注 ${uncertainCount} 处不确定项`
-      : '未发现需要标注的不确定项',
-  });
-
-  // 7. 来源材料检查
-  if (items && items.length > 0) {
-    const withSource = items.filter(i => !i.isUnknown).length;
-    checks.push({
-      rule: '来源材料可追溯',
-      passed: withSource > 0,
-      detail: `${withSource}/${items.length} 项可追溯到知识库`,
-    });
-  }
-
-  const passed = checks.filter(c => !c.passed).length === 0;
-
-  return { passed, checks, warnings };
+  return { passed: checks.filter(c=>!c.passed).length===0, checks, warnings };
 }
 
-// ---- Markdown 报告生成 ----
+// ---- 工具 ----
 
-/**
- * 生成完整 Markdown 报告
- */
+function fmt(n: number): string { return `¥${n.toFixed(2)}`; }
+function catGroup(items: AnalyzedItem[]): Record<string, AnalyzedItem[]> {
+  const g: Record<string, AnalyzedItem[]> = {};
+  for (const i of items) { const c = i.category||'其他'; (g[c]??=[]).push(i); }
+  return g;
+}
+function isHighPrice(i: AnalyzedItem) { return i.priceAssessment?.level==='偏高'||i.priceAssessment?.level==='略高'; }
+
+// ================================================================
+//  核心：composeReport
+// ================================================================
+
 export function composeReport(input: ReportInput): ReportResult {
-  const reportId = uuid();
-  const petName = input.petName || '待确认';
-
-  // 自动选择报告类型
-  const { reportType, reason } = input.reportType && input.reportType !== 'auto'
-    ? { reportType: input.reportType, reason: '用户指定' }
+  const id = uuid(), pet = input.petName||UNKNOWN_LABEL;
+  const { reportType, reason } = input.reportType&&input.reportType!=='auto'
+    ? { reportType: input.reportType, reason:'用户指定' }
     : selectReportType(input.requestText);
+  const items = input.items||[], date = input.visitDate||new Date().toISOString().split('T')[0];
+  const total = input.totalAmount ?? items.reduce((s,i)=>s+i.amount,0);
 
-  const title = REPORT_TITLES[reportType];
-  const items = input.items || [];
-  const dateStr = input.visitDate || new Date().toISOString().split('T')[0];
+  const S: string[] = [];
 
-  // 构建报告
-  const sections: string[] = [];
+  // ── 标题区 ──
+  S.push(`# ${REPORT_TITLES[reportType]}`);
+  S.push('');
+  S.push(`**宠物**: ${pet}  |  **日期**: ${date}`);
+  if (input.hospitalName) S.push(`**就诊医院**: ${input.hospitalName}`);
+  if (input.city) S.push(`**所在城市**: ${input.city}`);
+  S.push('');
 
-  // 标题
-  sections.push(`# ${title}`);
-  sections.push('');
-  sections.push(`**宠物**: ${petName}  |  **日期**: ${dateStr}  |  **报告类型**: ${title}`);
-  if (input.hospitalName) {
-    sections.push(`**就诊医院**: ${input.hospitalName}`);
-  }
-  sections.push('');
-
-  // 1. 使用材料
-  sections.push('## 使用材料');
-  sections.push('');
-  if (items.length > 0) {
-    sections.push(`本报告基于以下 ${items.length} 项费用记录进行分析：`);
-    sections.push('');
-    sections.push('| 序号 | 项目名称 | 金额 | 类别 | 匹配状态 |');
-    sections.push('|------|---------|------|------|---------|');
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const status = item.isUnknown ? '⚠️ 未识别' : '✅ 已匹配';
-      sections.push(`| ${i + 1} | ${item.rawName} | ¥${item.amount.toFixed(2)} | ${item.category || '其他'} | ${status} |`);
+  // ── 来源列表（source list first — skill 要求） ──
+  S.push('## 使用材料');
+  S.push('');
+  if (items.length) {
+    S.push(`本报告基于就诊记录中的 ${items.length} 项费用数据进行分析。`);
+    S.push('');
+    S.push('| 序号 | 项目名称 | 金额 | 类别 | 知识库状态 |');
+    S.push('|------|---------|------|------|-----------|');
+    for (let i=0;i<items.length;i++) {
+      const it = items[i];
+      S.push(`| ${i+1} | ${it.rawName} | ${fmt(it.amount)} | ${it.category||'其他'} | ${it.isUnknown?'⚠️ 未收录':'✅ 已匹配'} |`);
     }
+    if (input.diagnosis) S.push(`| — | 诊断: ${input.diagnosis} | — | — | — |`);
   } else {
-    sections.push('本次分析未包含具体的费用项目记录。');
+    S.push('本次分析未包含具体的费用项目记录。');
   }
-  sections.push('');
+  S.push('');
 
-  // 2. 事实
-  sections.push('## 事实');
-  sections.push('');
-  sections.push('以下信息从提供的材料中直接提取：');
-  sections.push('');
-  sections.push(`- **就诊日期**: ${dateStr}`);
-  if (input.hospitalName) {
-    sections.push(`- **就诊医院**: ${input.hospitalName}`);
+  // ── 事实（直接提取，不加解读） ──
+  S.push('## 事实');
+  S.push('');
+  S.push('以下信息从提供的材料中直接提取，未经加工解读：');
+  S.push('');
+  S.push(`- **就诊日期**: ${date}`);
+  if (input.hospitalName) S.push(`- **就诊医院**: ${input.hospitalName}`);
+  if (input.city) S.push(`- **所在城市**: ${input.city}`);
+  if (input.visitReason) S.push(`- **就诊原因**: ${input.visitReason}`);
+  if (input.diagnosis) S.push(`- **诊断结果**: ${input.diagnosis}`);
+  if (total>0) S.push(`- **总费用**: ${fmt(total)}（${items.length}个项目）`);
+  if (input.petInfo) {
+    const pi = input.petInfo;
+    if (pi.species) S.push(`- **宠物种类**: ${pi.species}${pi.breed?`（${pi.breed}）`:''}`);
+    if (pi.gender) S.push(`- **性别**: ${pi.gender}`);
+    if (pi.birthDate) S.push(`- **出生日期**: ${pi.birthDate}`);
+    if (pi.weightKg) S.push(`- **体重**: ${pi.weightKg} kg`);
   }
-  if (input.city) {
-    sections.push(`- **所在城市**: ${input.city}`);
-  }
-  if (input.visitReason) {
-    sections.push(`- **就诊原因**: ${input.visitReason}`);
-  }
-  if (input.diagnosis) {
-    sections.push(`- **诊断结果**: ${input.diagnosis}`);
-  }
-  if (input.totalAmount != null && input.totalAmount > 0) {
-    sections.push(`- **总费用**: ¥${input.totalAmount.toFixed(2)}`);
-  }
-  sections.push(`- **费用项目数**: ${items.length} 项`);
-  sections.push('');
+  S.push('');
 
-  // 3. 整理结果
-  sections.push('## 整理结果');
-  sections.push('');
+  // ── 整理结果（结论优先，再放细节 — skill 要求） ──
+  S.push('## 整理结果');
+  S.push('');
 
-  if (items.length > 0) {
-    // 按类别分组汇总
-    const categoryGroups = groupByCategory(items);
-    sections.push('### 费用类别分布');
-    sections.push('');
-    sections.push('| 类别 | 项目数 | 合计金额 | 占比 |');
-    sections.push('|------|--------|---------|------|');
-    const totalAmt = input.totalAmount || items.reduce((s, i) => s + i.amount, 0);
-    for (const [cat, catItems] of Object.entries(categoryGroups)) {
-      const catTotal = catItems.reduce((s, i) => s + i.amount, 0);
-      const pct = totalAmt > 0 ? ((catTotal / totalAmt) * 100).toFixed(1) : '0';
-      sections.push(`| ${cat} | ${catItems.length} | ¥${catTotal.toFixed(2)} | ${pct}% |`);
+  // 先放结论摘要
+  S.push('### 概要');
+  S.push('');
+  if (input.summary) {
+    // 提取关键指标
+    const matched = input.summary.matchedItems, unknown = input.summary.unknownItems;
+    const high = input.summary.priceHighItems, warn = input.summary.priceWarningItems;
+    S.push(`- ${input.summary.overallAssessment}`);
+    S.push(`- 知识库匹配: ${matched}/${items.length} 项${unknown>0?`，${unknown} 项未识别`:''}`);
+    if (high>0||warn>0) S.push(`- 价格提示: ${high} 项偏高，${warn} 项略高`);
+    else S.push('- 价格均在参考区间内');
+    S.push(`- 总费用: ${fmt(total)}`);
+  } else {
+    S.push(`本次就诊共 ${items.length} 个项目，总费用 ${fmt(total)}。`);
+    const m = items.filter(i=>!i.isUnknown).length;
+    const u = items.filter(i=>i.isUnknown).length;
+    if (u>0) S.push(`${m} 项已匹配知识库，${u} 项未识别。`);
+  }
+  S.push('');
+
+  // 按报告类型放类型特定章节
+  S.push(...buildTypeSection(reportType, input, items, total, date));
+  S.push('');
+
+  // 逐项详情（放在结论之后）
+  if (items.length) {
+    S.push('### 逐项详情');
+    S.push('');
+    for (let i=0;i<items.length;i++) {
+      const it = items[i];
+      S.push(`#### ${i+1}. ${it.rawName} — ${fmt(it.amount)}`);
+      S.push('');
+      if (it.category) S.push(`- **类别**: ${it.category}`);
+      if (it.necessity) S.push(`- **必要性**: ${it.necessity}`);
+      if (it.priceAssessment) {
+        S.push(`- **价格评估**: ${it.priceAssessment.level}`);
+        S.push(`  - 参考区间: ${fmt(it.priceAssessment.p10)} ~ ${fmt(it.priceAssessment.p90)}`);
+        if (it.priceAssessment.message) S.push(`  - ${it.priceAssessment.message}`);
+      }
+      if (it.explanation) S.push(`- **解释**: ${it.explanation}`);
+      if (it.isUnknown) S.push(`- ⚠️ 该项目在知识库中未收录，以上解释为推断。建议向兽医确认其临床必要性。`);
+      S.push('');
     }
-    sections.push('');
+  }
 
-    // 逐项解读
-    sections.push('### 逐项解读');
-    sections.push('');
+  // ── 待确认 ──
+  S.push('## 待确认');
+  S.push('');
+  const uncertain = items.filter(i=>i.isUnknown);
+  if (uncertain.length) {
+    S.push(`以下 ${uncertain.length} 个项目未能从知识库中匹配：`);
+    S.push('');
+    for (const it of uncertain) S.push(`- **${it.rawName}** (${fmt(it.amount)})：${it.unknownReason||'知识库中未收录'}`);
+    S.push('');
+  }
+  if (!input.hospitalName) S.push('- 就诊医院名称未提供');
+  if (!input.diagnosis) S.push('- 诊断结果未提供（如有诊断书或病历，建议补充）');
+  if (!input.petName) S.push('- 宠物名称未提供');
+  if (!uncertain.length && input.hospitalName && input.petName) S.push('本次分析中所有已识别项目均已在知识库中找到匹配，基本信息完整。');
+  S.push('');
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      sections.push(`#### ${i + 1}. ${item.rawName} — ¥${item.amount.toFixed(2)}`);
-      sections.push('');
+  // ── 后续建议 ──
+  S.push('## 后续建议');
+  S.push('');
+  S.push(...buildNextActions(reportType, items, input));
+  S.push('');
 
-      if (item.category) {
-        sections.push(`- **类别**: ${item.category}`);
-      }
-      if (item.necessity) {
-        sections.push(`- **必要性**: ${item.necessity}`);
-      }
-      if (item.priceAssessment) {
-        sections.push(`- **价格评估**: ${item.priceAssessment.level}（参考区间 ¥${item.priceAssessment.p10.toFixed(0)}-¥${item.priceAssessment.p90.toFixed(0)}）`);
-      }
-      if (item.explanation) {
-        sections.push(`- **解释**: ${item.explanation}`);
-      }
-      if (item.isUnknown) {
-        sections.push(`- ⚠️ **注意**: 该项目在知识库中未找到匹配，解释基于推断，建议向兽医确认`);
-      }
-      sections.push('');
-    }
+  // ── 免责声明 ──
+  S.push('---');
+  S.push('');
+  if (reportType==='clinic_client_summary') {
+    S.push(CLINIC_DRAFT_DISCLAIMER);
   } else {
-    sections.push('本次分析没有可整理的费用项目。');
-    sections.push('');
+    S.push(MEDICAL_DISCLAIMER);
   }
+  if (reportType==='claim_check') { S.push(''); S.push(INSURANCE_DISCLAIMER); }
+  if (reportType==='bill_explain') { S.push(''); S.push(BILLING_BOUNDARY); }
+  S.push('');
 
-  // 根据报告类型添加特定内容
-  sections.push(...buildTypeSpecificSection(reportType, input));
-  sections.push('');
-
-  // 4. 待确认
-  sections.push('## 待确认');
-  sections.push('');
-  const uncertainItems = items.filter(i => i.isUnknown);
-  if (uncertainItems.length > 0) {
-    sections.push(`以下 ${uncertainItems.length} 个项目未能从知识库中匹配，建议向兽医确认：`);
-    sections.push('');
-    for (const item of uncertainItems) {
-      sections.push(`- **${item.rawName}** (¥${item.amount.toFixed(2)})：${item.unknownReason || '知识库中未收录'}`);
-    }
-  } else {
-    sections.push('所有费用项目均已在知识库中找到匹配，无待确认项。');
-  }
-  if (!input.hospitalName) {
-    sections.push('- 就诊医院名称未提供');
-  }
-  if (!input.diagnosis) {
-    sections.push('- 诊断结果未提供（如有诊断书或病历，建议补充以获得更完整的分析）');
-  }
-  sections.push('');
-
-  // 5. 后续建议
-  sections.push('## 后续建议');
-  sections.push('');
-  sections.push(...buildNextActions(reportType, items, input));
-  sections.push('');
-
-  // 免责声明
-  sections.push('---');
-  sections.push('');
-  if (reportType === 'clinic_client_summary') {
-    sections.push(CLINIC_DRAFT_DISCLAIMER);
-  } else {
-    sections.push(MEDICAL_DISCLAIMER);
-  }
-  if (reportType === 'claim_check' && input.insuranceResult) {
-    sections.push('');
-    sections.push(INSURANCE_DISCLAIMER);
-  }
-  sections.push('');
-
-  const markdown = sections.join('\n');
-
-  // 生成 manifest
-  const manifest = createManifest(
-    reportId,
-    reportType,
-    petName,
-    reason,
-    items.length,
-    input.recordId
-  );
-
-  // 质量检查
-  const qaResult = runQaChecks(markdown, reportType, items);
-
+  const md = S.join('\n');
   return {
-    reportId,
-    reportType,
-    markdown,
-    manifest,
-    qaResult,
-    title,
+    reportId: id, reportType, markdown: md,
+    manifest: createManifest(id, reportType, pet, reason, items.length, input.recordId),
+    qaResult: runQa(md, reportType, items),
+    title: REPORT_TITLES[reportType],
   };
 }
 
-/** 按类别分组 */
-function groupByCategory(items: AnalyzedItem[]): Record<string, AnalyzedItem[]> {
-  const groups: Record<string, AnalyzedItem[]> = {};
-  for (const item of items) {
-    const cat = item.category || '其他';
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(item);
-  }
-  return groups;
-}
+// ================================================================
+//  类型特定章节（按 skill SKILL.md 的 required sections 对齐）
+// ================================================================
 
-/** 构建报告类型特定内容 */
-function buildTypeSpecificSection(
-  reportType: ReportType,
-  input: ReportInput
+function buildTypeSection(
+  type: ReportType, input: ReportInput,
+  items: AnalyzedItem[], total: number, date: string
 ): string[] {
-  const lines: string[] = [];
-  const items = input.items || [];
+  const L: string[] = [];
 
-  switch (reportType) {
+  switch (type) {
+
+    // ── bill_explain: bill overview, cost categories, high-value items, added items, questions for the clinic ──
     case 'bill_explain': {
-      lines.push('### 费用合理性分析');
-      lines.push('');
-      if (input.summary) {
-        lines.push(input.summary.overallAssessment);
-        lines.push('');
+      const cats = catGroup(items);
+      L.push('### 费用概览');
+      L.push('');
+      L.push(`本次就诊共 **${items.length}** 项收费，总金额 **${fmt(total)}**。`);
+      L.push('');
+
+      // 费用类别分布
+      L.push('### 费用类别');
+      L.push('');
+      L.push('| 类别 | 项目数 | 合计 | 占比 |');
+      L.push('|------|--------|------|------|');
+      for (const [c, ci] of Object.entries(cats)) {
+        const ct = ci.reduce((s,i)=>s+i.amount,0);
+        L.push(`| ${c} | ${ci.length} | ${fmt(ct)} | ${total>0?(ct/total*100).toFixed(0)+'%':'—'} |`);
       }
-      const highPriceItems = items.filter(
-        i => i.priceAssessment?.level === '偏高' || i.priceAssessment?.level === '略高'
-      );
-      if (highPriceItems.length > 0) {
-        lines.push('**价格偏高的项目**：');
-        for (const item of highPriceItems) {
-          lines.push(`- **${item.rawName}** (¥${item.amount.toFixed(2)})：${item.priceAssessment?.message || ''}`);
+      L.push('');
+
+      // 高值项目（金额超过平均值 2 倍或 >¥200）
+      const highValue = items.filter(i => i.amount >= Math.max(total/items.length*2, 200));
+      if (highValue.length) {
+        L.push('### 高值项目');
+        L.push('');
+        for (const it of highValue) {
+          L.push(`- **${it.rawName}** — ${fmt(it.amount)}`);
+          if (it.explanation) L.push(`  ${it.explanation}`);
         }
-      } else {
-        lines.push('所有项目价格均在参考区间内。');
+        L.push('');
       }
-      lines.push('');
-      lines.push('> 💡 **提示**：价格评估基于同城市同级别医院的公开数据，不同医院因设备、医生资历、药品品牌等因素存在合理差异。');
+
+      // 价格参考
+      if (input.summary) {
+        L.push('### 价格参考');
+        L.push('');
+        L.push(input.summary.overallAssessment);
+        L.push('');
+      }
+
+      // 建议向诊所确认的问题
+      L.push('### 建议向诊所确认');
+      L.push('');
+      if (items.some(i=>i.isUnknown)) {
+        L.push('以下项目建议向诊所前台或兽医确认：');
+        L.push('');
+        for (const it of items.filter(i=>i.isUnknown)) {
+          L.push(`- "${it.rawName}" 的临床必要性和替代方案`);
+        }
+      }
+      if (items.some(i=>i.priceAssessment?.level==='偏高')) {
+        L.push('- 价格偏高项目的定价依据（是否含急诊/夜间/节假日附加费）');
+      }
+      L.push('- 是否有套餐或会员折扣可申请');
       break;
     }
 
+    // ── claim_check: expense summary, existing materials, missing materials, risk reminders, no outcome promise ──
     case 'claim_check': {
-      lines.push('### 理赔材料完整性检查');
-      lines.push('');
+      L.push('### 费用摘要');
+      L.push('');
+      L.push(`就诊日期: ${date}  |  总费用: ${fmt(total)}  |  项目数: ${items.length}`);
+      L.push('');
+
       if (input.insuranceResult) {
-        const ir = input.insuranceResult as Record<string, unknown>;
-        if (ir.totalCoverable != null) {
-          lines.push(`- **可赔付项目合计**: ¥${Number(ir.totalCoverable).toFixed(2)}`);
-        }
-        if (ir.totalEstimatedPayout != null) {
-          lines.push(`- **预计赔付金额**: ¥${Number(ir.totalEstimatedPayout).toFixed(2)}`);
-        }
-        if (Array.isArray(ir.warnings) && ir.warnings.length > 0) {
-          lines.push('');
-          lines.push('**风险提示**：');
-          for (const w of ir.warnings) {
-            lines.push(`- ⚠️ ${w}`);
-          }
-        }
-        if (Array.isArray(ir.missingDocuments) && ir.missingDocuments.length > 0) {
-          lines.push('');
-          lines.push('**需准备的材料**：');
-          for (const doc of ir.missingDocuments) {
-            lines.push(`- 📋 ${doc}`);
-          }
-        }
-      }
-      lines.push('');
-      lines.push('> 💡 **提示**：理赔材料清单为通用建议，具体要求以保险公司最新条款为准。');
-      break;
-    }
+        const ir = input.insuranceResult as Record<string,unknown>;
+        const coverable = Number(ir.totalCoverable||0);
+        const payout = Number(ir.totalEstimatedPayout||0);
+        L.push('### 已具备的材料');
+        L.push('');
+        L.push('- 费用清单（逐项明细）');
+        L.push('- 就诊记录（本次分析已归档）');
+        if (input.diagnosis) L.push(`- 诊断证明: ${input.diagnosis}`);
+        L.push('');
 
-    case 'timeline': {
-      lines.push('### 就诊时间线');
-      lines.push('');
-      lines.push(`| 日期 | 医院 | 原因 | 费用 |`);
-      lines.push('|------|------|------|------|');
-      lines.push(`| ${input.visitDate || '未知'} | ${input.hospitalName || '未知'} | ${input.visitReason || '就诊'} | ¥${(input.totalAmount || 0).toFixed(2)} |`);
-      lines.push('');
-      lines.push('> ⚠️ **注意**：当前仅包含本次就诊记录。跨院完整时间线需要导入历史就诊数据。');
-      break;
-    }
-
-    case 'medical_summary': {
-      lines.push('### 关键发现');
-      lines.push('');
-      if (input.diagnosis) {
-        lines.push(`**诊断**: ${input.diagnosis}`);
-        lines.push('');
-      }
-      const matchedItems = items.filter(i => !i.isUnknown);
-      if (matchedItems.length > 0) {
-        lines.push('**已识别的检查和治疗项目**：');
-        for (const item of matchedItems) {
-          lines.push(`- ${item.rawName}：${item.explanation || '详见逐项解读'}`);
+        L.push('### 缺少的材料');
+        L.push('');
+        if (Array.isArray(ir.missingDocuments) && ir.missingDocuments.length) {
+          for (const d of ir.missingDocuments) L.push(`- ❌ ${d}`);
         }
-      }
-      lines.push('');
-      lines.push('### 就诊问题建议');
-      lines.push('');
-      lines.push('建议在复诊时向兽医确认以下问题：');
-      lines.push('');
-      const unknownItems = items.filter(i => i.isUnknown);
-      if (unknownItems.length > 0) {
-        for (const item of unknownItems) {
-          lines.push(`- "${item.rawName}" 的具体临床必要性是什么？`);
-        }
-      }
-      if (!input.diagnosis) {
-        lines.push('- 本次就诊的明确诊断是什么？');
-      }
-      lines.push('- 后续是否需要复查？复查时间建议？');
-      break;
-    }
+        L.push('');
 
-    case 'chronic_review': {
-      lines.push('### 本月概况');
-      lines.push('');
-      lines.push(`- **就诊次数**: 1 次（本次）`);
-      if (input.totalAmount) {
-        lines.push(`- **本月费用**: ¥${input.totalAmount.toFixed(2)}`);
-      }
-      lines.push('');
-      lines.push('### 用药与治疗记录');
-      lines.push('');
-      const medItems = items.filter(i =>
-        i.category === '药品' || i.rawName.includes('药')
-      );
-      if (medItems.length > 0) {
-        for (const item of medItems) {
-          lines.push(`- ${item.rawName} (¥${item.amount.toFixed(2)})`);
+        L.push('### 赔付预估');
+        L.push('');
+        L.push(`- **可赔付项目合计**: ${fmt(coverable)}`);
+        L.push(`- **预计赔付金额**: ${fmt(payout)}（扣除免赔额后按比例计算）`);
+        L.push('');
+
+        if (Array.isArray(ir.warnings) && ir.warnings.length) {
+          L.push('### 风险提醒');
+          L.push('');
+          for (const w of ir.warnings) L.push(`- ⚠️ ${w}`);
+          L.push('');
         }
       } else {
-        lines.push('本次未识别到明确的药品项目。');
+        L.push('### 材料清单');
+        L.push('');
+        L.push('请准备以下材料提交理赔：');
+        L.push('');
+        for (const d of ['诊断证明（需医院盖章）','费用清单（逐项明细）','检查报告原件','处方笺','病历记录','保单凭证']) {
+          L.push(`- 📋 ${d}`);
+        }
+        L.push('');
       }
-      lines.push('');
-      lines.push('### 下月行动建议');
-      lines.push('');
-      lines.push('- 记录每日用药情况和宠物状态变化');
-      lines.push('- 如发现异常症状，及时预约复诊');
-      lines.push('- 整理本月所有就诊票据，便于下月复盘');
+
+      L.push('> 💡 **提示**：以上为通用理赔材料清单，具体以保险公司最新条款为准。');
       break;
     }
 
-    case 'clinic_client_summary': {
-      lines.push('### 报告摘要');
-      lines.push('');
+    // ── timeline: pet profile, medical history, recent timeline, key tests, current medication, clinic-facing summary ──
+    case 'timeline': {
+      // 宠物档案
+      if (input.petInfo) {
+        const pi = input.petInfo;
+        L.push('### 宠物档案');
+        L.push('');
+        L.push(`- 种类: ${pi.species||UNKNOWN_LABEL}${pi.breed?` / ${pi.breed}`:''}`);
+        if (pi.gender) L.push(`- 性别: ${pi.gender}`);
+        if (pi.birthDate) L.push(`- 出生日期: ${pi.birthDate}`);
+        if (pi.weightKg) L.push(`- 体重: ${pi.weightKg} kg`);
+        L.push('');
+      }
+
+      // 就诊时间线
+      L.push('### 就诊时间线');
+      L.push('');
+      L.push('| 日期 | 医院 | 原因 | 诊断 | 费用 |');
+      L.push('|------|------|------|------|------|');
+      L.push(`| ${date} | ${input.hospitalName||UNKNOWN_LABEL} | ${input.visitReason||'就诊'} | ${input.diagnosis||UNKNOWN_LABEL} | ${fmt(total)} |`);
+      L.push('');
+
+      // 本次关键检查
+      const testItems = items.filter(i => i.category==='检查'||/检|测|超|X|C[TR]/i.test(i.rawName));
+      if (testItems.length) {
+        L.push('### 本次关键检查');
+        L.push('');
+        for (const it of testItems) {
+          L.push(`- **${it.rawName}** (${fmt(it.amount)})${it.explanation?`: ${it.explanation}`:''}`);
+        }
+        L.push('');
+      }
+
+      // 当前用药
+      const meds = items.filter(i => i.category==='药品'||/药|针|剂|片|丸|胶囊/i.test(i.rawName));
+      L.push('### 当前用药');
+      L.push('');
+      if (meds.length) {
+        for (const it of meds) L.push(`- ${it.rawName} (${fmt(it.amount)})`);
+      } else {
+        L.push('本次就诊未识别到明确的药品处方。');
+      }
+      L.push('');
+
+      L.push('### 转诊摘要（供接收医院参考）');
+      L.push('');
+      L.push(`- 就诊日期: ${date}`);
+      if (input.diagnosis) L.push(`- 诊断: ${input.diagnosis}`);
+      L.push(`- 已做检查: ${testItems.map(i=>i.rawName).join('、')||'无记录'}`);
+      L.push(`- 用药情况: ${meds.map(i=>i.rawName).join('、')||'无记录'}`);
+      L.push(`- 本次费用: ${fmt(total)}`);
+      break;
+    }
+
+    // ── medical_summary: one-line summary, key findings, plain-language explanation, questions for vet, uncertainty notes ──
+    case 'medical_summary': {
+      // 一句话总结
+      L.push('### 一句话总结');
+      L.push('');
       if (input.diagnosis) {
-        lines.push(`本次就诊诊断为 **${input.diagnosis}**。`);
+        L.push(`本次就诊诊断为 **${input.diagnosis}**，共产生 ${items.length} 项费用，总计 ${fmt(total)}。`);
+      } else {
+        L.push(`本次就诊共产生 ${items.length} 项费用，总计 ${fmt(total)}。诊断结果尚未提供。`);
       }
-      lines.push('');
-      lines.push('### 关键发现');
-      lines.push('');
-      lines.push('（需由兽医填写具体临床发现）');
-      lines.push('');
-      lines.push('### 费用说明');
-      lines.push('');
-      lines.push(`本次就诊总费用 ¥${(input.totalAmount || 0).toFixed(2)}，包含 ${items.length} 个项目。`);
-      lines.push('');
-      lines.push('### 复查提醒');
-      lines.push('');
-      lines.push('（需由兽医填写复查建议）');
+      L.push('');
+
+      // 关键发现
+      L.push('### 关键发现');
+      L.push('');
+      const known = items.filter(i=>!i.isUnknown);
+      if (known.length) {
+        for (const it of known) {
+          L.push(`- **${it.rawName}** (${fmt(it.amount)})`);
+          if (it.explanation) L.push(`  ${it.explanation}`);
+        }
+      }
+      L.push('');
+
+      // 通俗解释
+      L.push('### 通俗解释');
+      L.push('');
+      if (known.length) {
+        const explains = known.filter(i=>i.explanation).slice(0,5);
+        for (const it of explains) {
+          L.push(`- **${it.rawName}**: ${it.explanation}`);
+        }
+      }
+      const unknown = items.filter(i=>i.isUnknown);
+      if (unknown.length) {
+        L.push(`- 还有 ${unknown.length} 个项目（${unknown.map(i=>i.rawName).join('、')}）在知识库中未收录，建议向兽医咨询。`);
+      }
+      L.push('');
+
+      // 建议向兽医提问
+      L.push('### 建议向兽医确认的问题');
+      L.push('');
+      if (!input.diagnosis) L.push('- 本次就诊的明确诊断是什么？');
+      for (const it of unknown) L.push(`- "${it.rawName}" 的临床必要性是什么？`);
+      L.push('- 后续是否需要复查？复查时间建议？');
+      L.push('- 是否有需要注意的居家护理事项？');
       break;
     }
 
+    // ── chronic_review: monthly overview, visits, labs, medication changes, expense categories, next month actions ──
+    case 'chronic_review': {
+      L.push('### 本月概况');
+      L.push('');
+      L.push(`- 就诊次数: 1 次`);
+      L.push(`- 本月总费用: ${fmt(total)}`);
+      if (input.diagnosis) L.push(`- 主要诊断: ${input.diagnosis}`);
+      L.push('');
+
+      L.push('### 就诊记录');
+      L.push('');
+      L.push(`| 日期 | 医院 | 主要检查 | 费用 |`);
+      L.push('|------|------|---------|------|');
+      const labs = items.filter(i => i.category==='检查'||/检|测|超|X|C[TR]/i.test(i.rawName));
+      L.push(`| ${date} | ${input.hospitalName||UNKNOWN_LABEL} | ${labs.map(i=>i.rawName).join('、')||'无'} | ${fmt(total)} |`);
+      L.push('');
+
+      if (labs.length) {
+        L.push('### 化验/检查项目');
+        L.push('');
+        for (const it of labs) L.push(`- ${it.rawName} (${fmt(it.amount)})`);
+        L.push('');
+      }
+
+      L.push('### 用药变化');
+      L.push('');
+      const meds = items.filter(i => i.category==='药品'||/药|针|剂|片|丸|胶囊/i.test(i.rawName));
+      if (meds.length) {
+        for (const it of meds) L.push(`- ${it.rawName} (${fmt(it.amount)})`);
+      } else {
+        L.push('本次未识别到明确的药品变化。');
+      }
+      L.push('');
+
+      L.push('### 费用构成');
+      L.push('');
+      for (const [c,ci] of Object.entries(catGroup(items))) {
+        L.push(`- ${c}: ${fmt(ci.reduce((s,i)=>s+i.amount,0))}（${ci.length}项）`);
+      }
+      L.push('');
+
+      L.push('### 下月行动计划');
+      L.push('');
+      L.push('- 记录每日用药和状态变化');
+      L.push('- 按医嘱预约复查');
+      L.push('- 整理本月票据，更新费用记录');
+      L.push('- 关注异常症状，必要时提前就诊');
+      break;
+    }
+
+    // ── clinic_client_summary: report summary, key findings, fee notes, follow-up reminders, requires clinician review ──
+    case 'clinic_client_summary': {
+      L.push('### 报告摘要');
+      L.push('');
+      L.push(`宠物 ${pet(input)} 于 ${date} 在本院就诊。`);
+      if (input.diagnosis) L.push(`诊断结果: **${input.diagnosis}**。`);
+      L.push(`本次共产生 ${items.length} 项费用，合计 ${fmt(total)}。`);
+      L.push('');
+
+      L.push('### 关键发现');
+      L.push('');
+      L.push('（以下内容需由执业兽医填写确认）');
+      L.push('');
+
+      L.push('### 费用说明');
+      L.push('');
+      for (const [c,ci] of Object.entries(catGroup(items))) {
+        L.push(`- ${c}: ${ci.length}项，${fmt(ci.reduce((s,i)=>s+i.amount,0))}`);
+      }
+      L.push('');
+
+      L.push('### 复查与随访');
+      L.push('');
+      L.push('（需由兽医填写具体复查建议）');
+      break;
+    }
+
+    // ── general: pet profile, source list, visit summary, bill explanation, claim check, next actions ──
     case 'general':
     default: {
-      if (input.summary) {
-        lines.push('### 综合评估');
-        lines.push('');
-        lines.push(input.summary.overallAssessment);
-        lines.push('');
+      // 综合报告：已有概要 + 逐项详情，补充保险提示
+      const unk = items.filter(i=>i.isUnknown);
+      if (unk.length) {
+        L.push('### 未识别项目');
+        L.push('');
+        for (const it of unk) L.push(`- ${it.rawName} (${fmt(it.amount)})`);
+        L.push('');
       }
+      L.push('### 综合提示');
+      L.push('');
+      L.push('- 如有宠物保险，可上传保单进行理赔预检');
+      L.push('- 建议定期归档就诊记录，建立完整的宠物医疗档案');
+      if (input.hospitalName) L.push(`- 本次就诊医院: ${input.hospitalName}`);
       break;
     }
   }
 
-  return lines;
+  return L;
 }
 
-/** 构建后续建议 */
-function buildNextActions(
-  reportType: ReportType,
-  items: AnalyzedItem[],
-  input: ReportInput
-): string[] {
-  const lines: string[] = [];
+function pet(input: ReportInput): string {
+  return input.petName||UNKNOWN_LABEL;
+}
 
-  switch (reportType) {
-    case 'bill_explain': {
-      lines.push('1. **核实未识别项目**：对标注为"未识别"的项目，建议向兽医确认其临床必要性');
-      lines.push('2. **保留票据**：妥善保管原始发票和费用清单，以备保险理赔使用');
-      lines.push('3. **价格对比**：如有疑虑，可查询同城同级别医院的公开价格作为参考');
-      break;
-    }
-    case 'claim_check': {
-      lines.push('1. **补齐材料**：根据上方清单准备完整的理赔材料');
-      lines.push('2. **注意时效**：确认保单有效期内提交理赔申请');
-      lines.push('3. **保留原件**：所有材料需提供原件或加盖医院公章的复印件');
-      break;
-    }
-    case 'timeline': {
-      lines.push('1. **补充历史记录**：导入此前在其他医院的就诊记录，完善时间线');
-      lines.push('2. **整理资料包**：将检查报告、处方、账单按时间顺序排列');
-      lines.push('3. **标注关键节点**：标注手术、疫苗接种、慢性病确诊等重要事件');
-      break;
-    }
-    case 'medical_summary': {
-      lines.push('1. **记录观察**：记录宠物的饮食、排泄、精神状态变化');
-      lines.push('2. **按时复查**：遵医嘱按时复查，不要自行调整或停药');
-      lines.push('3. **准备问题**：复诊前列出想问兽医的问题清单');
-      break;
-    }
-    case 'chronic_review': {
-      lines.push('1. **用药日志**：记录每日用药时间、剂量和宠物反应');
-      lines.push('2. **定期监测**：按医嘱进行血常规、生化等定期检查');
-      lines.push('3. **饮食管理**：严格遵守处方粮或特殊饮食要求');
-      lines.push('4. **应急准备**：了解最近的24小时急诊医院位置');
-      break;
-    }
-    case 'clinic_client_summary': {
-      lines.push('1. **兽医审核**：本文须经执业兽医审核确认后方可使用');
-      lines.push('2. **补充信息**：根据实际临床情况补充关键发现和复查建议');
-      lines.push('3. **客户沟通**：以本文为基础与客户沟通，注意使用通俗语言');
-      break;
-    }
-    case 'general':
-    default: {
-      lines.push('1. **完善信息**：补充宠物档案、诊断结果等信息可提高分析精准度');
-      lines.push('2. **定期归档**：建议每次就诊后及时上传资料并生成报告归档');
-      lines.push('3. **保险规划**：如有宠物保险，可进行理赔预检了解赔付可能性');
-      break;
-    }
+// ================================================================
+//  后续建议（按类型）
+// ================================================================
+
+function buildNextActions(type: ReportType, items: AnalyzedItem[], input: ReportInput): string[] {
+  switch (type) {
+    case 'bill_explain': return [
+      '1. **核实未识别项目**：标注为"知识库未收录"的项目，建议向兽医确认临床必要性',
+      '2. **保留原始票据**：妥善保管发票和费用清单原件，以备保险理赔使用',
+      '3. **价格参考**：可对比同城同级别医院的公开价格，了解收费水平',
+    ];
+    case 'claim_check': return [
+      '1. **补齐缺失材料**：根据上方"缺少的材料"清单逐项准备',
+      '2. **确认时效**：在保单有效期内提交理赔申请',
+      '3. **原件要求**：所有材料需提供原件或加盖医院公章的复印件',
+      '4. **先咨询再提交**：建议提交前先咨询保险公司客服确认材料完整性',
+    ];
+    case 'timeline': return [
+      '1. **补充历史记录**：导入此前在其他医院的就诊记录，完善完整时间线',
+      '2. **整理资料包**：将检查报告、处方、账单按时间顺序归档',
+      '3. **标注关键节点**：标注手术日期、疫苗接种时间、慢性病确诊日期等',
+    ];
+    case 'medical_summary': return [
+      '1. **记录观察**：记录宠物的饮食、排泄、精神状态等日常变化',
+      '2. **按时复查**：遵医嘱按时复查，不要自行调整用药或停药',
+      '3. **准备问题清单**：复诊前列出想问兽医的问题',
+      '4. **紧急情况**：如出现呼吸困难、持续呕吐、抽搐等紧急症状，立即就医',
+    ];
+    case 'chronic_review': return [
+      '1. **用药日志**：记录每日用药时间、剂量和宠物反应',
+      '2. **定期监测**：按医嘱进行血常规、生化等定期检查',
+      '3. **饮食管理**：严格遵守处方粮或特殊饮食要求',
+      '4. **应急准备**：保存最近的24小时急诊医院地址和电话',
+      '5. **月度复盘**：每月整理费用和检查结果，评估治疗效果',
+    ];
+    case 'clinic_client_summary': return [
+      '1. **兽医审核**：本文须经执业兽医审核确认后方可作为正式沟通材料',
+      '2. **补充临床信息**：根据实际诊疗情况补充关键发现和复查建议',
+      '3. **客户沟通**：以本文为基础与客户沟通，注意使用通俗易懂的语言',
+    ];
+    default: return [
+      '1. **完善档案**：补充宠物品种、年龄、性别等信息可提高后续分析精准度',
+      '2. **定期归档**：每次就诊后及时上传资料并生成报告',
+      '3. **保险规划**：如有宠物保险，可上传保单进行理赔预检',
+    ];
   }
-
-  return lines;
 }

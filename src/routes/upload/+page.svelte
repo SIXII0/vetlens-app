@@ -214,6 +214,7 @@
           city,
           hospitalName: hospitalName || undefined,
           petId: $selectedPetId || undefined,
+          petName: $selectedPetId ? ($pets.find(p => p.id === $selectedPetId)?.name || undefined) : undefined,
           visitDate,
           totalAmount,
           rawOcrText: ocrResult?.rawText || ocrResult?.text || null,

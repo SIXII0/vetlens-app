@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { runPetVaultPipeline, isPipelineAvailable, isLatexAvailable } from '$lib/server/engine/python-bridge';
 import { getRecordById } from '$lib/server/db/records';
+import { getPetById } from '$lib/server/db/pets';
 import { readFileSync, existsSync } from 'fs';
 
 /**
@@ -30,6 +31,8 @@ export const POST: RequestHandler = async ({ request }) => {
     let petName = body.petName;
     let visitDate = body.visitDate;
 
+    let petInfo: Record<string, unknown> | undefined;
+
     if (body.recordId) {
       const recordData = getRecordById(body.recordId);
       if (recordData) {
@@ -40,6 +43,21 @@ export const POST: RequestHandler = async ({ request }) => {
             name: it.raw_name,
             amount: it.amount,
           }));
+        }
+        // 从关联宠物获取完整档案
+        if (recordData.record.pet_id) {
+          const pet = getPetById(recordData.record.pet_id);
+          if (pet) {
+            if (!petName) petName = pet.name;
+            petInfo = {
+              name: pet.name,
+              species: pet.species,
+              breed: pet.breed || undefined,
+              gender: pet.gender || undefined,
+              birthDate: pet.birth_date || undefined,
+              weightKg: pet.weight_kg || undefined,
+            };
+          }
         }
       }
     }
@@ -57,8 +75,10 @@ export const POST: RequestHandler = async ({ request }) => {
       billItems: items,
       hospitalName,
       visitDate,
+      diagnosis: body.diagnosis || '',
+      petInfo,
       analysisText: body.analysisText,
-    });
+    } as any);
 
     if (!result.success) {
       return json({

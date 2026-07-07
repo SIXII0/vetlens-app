@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { formatCurrency, formatDate, priceLevelBadge } from '$lib/utils/format';
   import { markdownToHtml } from '$lib/utils/markdown';
+  import { pets, loadPets } from '$lib/stores/pets';
 
   let loading = $state(true);
   let error = $state<string | null>(null);
@@ -19,6 +20,9 @@
   let reportQa = $state<{ passed: boolean; warnings: string[] } | null>(null);
 
   onMount(async () => {
+    // 加载宠物列表（用于关联宠物名）
+    loadPets();
+
     try {
       const res = await fetch(`/api/records/${$page.params.id}`);
       if (!res.ok) {
@@ -87,6 +91,10 @@
         format: 'report',
         reportType: 'auto',
         requestText: record.visit_reason || '账单分析',
+        petId: record.pet_id || undefined,
+        petName: record.pet_id
+          ? ($pets.find(p => p.id === record.pet_id)?.name || undefined)
+          : undefined,
       };
 
       const res = await fetch('/api/analyze?format=report', {
@@ -132,6 +140,9 @@
           recordId: $page.params.id,
           items: items.map((it: any) => ({ name: it.raw_name, amount: it.amount })),
           hospitalName: record.hospital_name,
+          petName: record.pet_id
+            ? ($pets.find(p => p.id === record.pet_id)?.name || undefined)
+            : undefined,
           visitDate: record.visit_date,
           requestText: record.visit_reason || '账单解释报告',
           reportType: 'bill_explain',

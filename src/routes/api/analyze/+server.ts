@@ -1,10 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { analyzeBill } from '$lib/server/engine/explainer';
-import { composeReport, selectReportType } from '$lib/server/engine/reporter';
+import { composeReport } from '$lib/server/engine/reporter';
 import { getLlmAdapter } from '$lib/server/llm/index';
 import { createRecord, insertLineItems } from '$lib/server/db/records';
 import { saveReport } from '$lib/server/db/reports';
+import { getPetById } from '$lib/server/db/pets';
 import type { AnalyzedItem } from '$lib/server/engine/types';
 import { v4 as uuid } from 'uuid';
 
@@ -105,8 +106,24 @@ export const POST: RequestHandler = async ({ request, url }) => {
     let reportResult = null;
     if (outputFormat === 'report' || outputFormat === 'full') {
       try {
+        // 获取宠物档案信息
+        let petInfo: Record<string, unknown> | undefined;
+        if (input.petId) {
+          const pet = getPetById(input.petId);
+          if (pet) {
+            petInfo = {
+              name: pet.name,
+              species: pet.species,
+              breed: pet.breed || undefined,
+              gender: pet.gender || undefined,
+              birthDate: pet.birth_date || undefined,
+              weightKg: pet.weight_kg || undefined,
+            };
+          }
+        }
+
         reportResult = composeReport({
-          petName: body.petName,
+          petName: body.petName || (petInfo?.name as string) || undefined,
           visitDate: input.visitDate,
           hospitalName: input.hospitalName,
           visitReason: body.visitReason,
@@ -119,6 +136,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
           requestText: body.requestText || body.visitReason,
           rawOcrText: body.rawOcrText,
           recordId: record?.id,
+          petInfo,
         });
 
         // 持久化报告

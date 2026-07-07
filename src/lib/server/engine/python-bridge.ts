@@ -16,6 +16,7 @@ import { v4 as uuid } from 'uuid';
 const execFileAsync = promisify(execFile);
 
 const SKILL_DIR = path.join(process.cwd(), '.claude', 'skills', 'pet-vault-skill');
+const BRIDGE_SCRIPT = path.join(process.cwd(), 'src', 'lib', 'server', 'engine', 'skill_bridge.py');
 
 /** 自动探测 Python 路径 */
 function findPython(): string {
@@ -68,6 +69,10 @@ export interface PipelineOptions {
   visitDate?: string;
   /** 分析引擎的解释文本（可选，作为额外材料） */
   analysisText?: string;
+  /** 宠物档案信息 */
+  petInfo?: Record<string, unknown>;
+  /** 诊断结果 */
+  diagnosis?: string;
 }
 
 export interface PipelineResult {
@@ -86,66 +91,46 @@ export interface PipelineResult {
  */
 export async function runPetVaultPipeline(opts: PipelineOptions): Promise<PipelineResult> {
   const reportId = uuid();
-  const pipelineScript = path.join(SKILL_DIR, 'scripts', 'run_pipeline.py');
 
-  // 验证 Python 管线是否存在
-  if (!fs.existsSync(pipelineScript)) {
+  // 验证桥接脚本存在
+  if (!fs.existsSync(BRIDGE_SCRIPT)) {
     return {
       success: false, reportId, outputDir: '', buildLog: '',
-      error: `pet-vault-skill 管线脚本未找到: ${pipelineScript}`,
+      error: `skill_bridge.py 未找到: ${BRIDGE_SCRIPT}`,
     };
   }
 
-  // 创建临时输入目录（包含账单数据文本文件）
-  const inputDir = path.join(os.tmpdir(), `vetlens-pipeline-input-${reportId}`);
-  const outputDir = path.join(os.tmpdir(), `vetlens-pipeline-output-${reportId}`);
-  const vaultDir = path.join(process.env.PETVAULT_VAULT_DIR || path.join(os.homedir(), 'PetVault', 'vault'));
-
-  fs.mkdirSync(inputDir, { recursive: true });
+  // 创建输出目录
+  const outputDir = path.join(os.tmpdir(), `vetlens-skill-output-${reportId}`);
   fs.mkdirSync(outputDir, { recursive: true });
-  fs.mkdirSync(vaultDir, { recursive: true });
 
   try {
-    // 构建输入材料文件
-    const materialLines: string[] = [];
-    materialLines.push(`# 账单分析请求`);
-    materialLines.push('');
-    materialLines.push(`请求: ${opts.requestText}`);
-    if (opts.petName) materialLines.push(`宠物: ${opts.petName}`);
-    if (opts.hospitalName) materialLines.push(`医院: ${opts.hospitalName}`);
-    if (opts.visitDate) materialLines.push(`日期: ${opts.visitDate}`);
-    materialLines.push('');
+    // 构造 JSON 输入（符合 skill materials_index 规范）
+    const inputData: Record<string, unknown> = {
+      petName: opts.petName || '待确认',
+      hospitalName: opts.hospitalName || '',
+      visitDate: opts.visitDate || '',
+      requestText: opts.requestText,
+      diagnosis: opts.diagnosis || '',
+      totalAmount: opts.billItems?.reduce((s, i) => s + i.amount, 0) || 0,
+      items: (opts.billItems || []).map(it => ({
+        name: it.name,
+        amount: it.amount,
+      })),
+      petInfo: opts.petInfo || undefined,
+    };
 
-    if (opts.billItems && opts.billItems.length > 0) {
-      materialLines.push('## 费用项目');
-      materialLines.push('');
-      materialLines.push('| 项目 | 金额 |');
-      materialLines.push('|------|------|');
-      for (const item of opts.billItems) {
-        materialLines.push(`| ${item.name} | ¥${item.amount.toFixed(2)} |`);
-      }
-    }
+    const inputFile = path.join(outputDir, 'input_data.json');
+    fs.writeFileSync(inputFile, JSON.stringify(inputData, null, 2), 'utf-8');
 
-    if (opts.analysisText) {
-      materialLines.push('');
-      materialLines.push('## 分析结果');
-      materialLines.push('');
-      materialLines.push(opts.analysisText);
-    }
-
-    const inputFile = path.join(inputDir, 'bill_data.md');
-    fs.writeFileSync(inputFile, materialLines.join('\n'), 'utf-8');
-
-    // 构建命令行参数
+    // 构建命令行参数（使用 skill_bridge.py 包装脚本）
     const args = [
-      pipelineScript,
-      '--input', inputDir,
-      '--output', outputDir,
-      '--vault', vaultDir,
-      '--request', opts.requestText,
-      '--pet-name', opts.petName || '待确认',
+      BRIDGE_SCRIPT,
+      '--input-data', inputFile,
+      '--output-dir', outputDir,
       '--report-type', opts.reportType || 'auto',
-      '--pdf-policy', opts.pdfPolicy || 'attempt',
+      '--pet-name', opts.petName || '待确认',
+      '--pdf-policy', opts.pdfPolicy || 'required',
     ];
 
     // 构建环境变量（包含 xelatex 路径）

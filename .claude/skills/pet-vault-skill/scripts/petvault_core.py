@@ -922,10 +922,13 @@ def compile_pdf(tex_path: Path, output_dir: Path, skip: bool = False) -> tuple[b
         cmd = [engine, "-xelatex", "-interaction=nonstopmode", tex_path.name]
     else:
         cmd = [engine, "-interaction=nonstopmode", tex_path.name]
-    result = subprocess.run(cmd, cwd=output_dir, text=True, encoding="utf-8", errors="replace", capture_output=True, timeout=300)
-    log = result.stdout + "\n" + result.stderr
+    # 第一遍：生成 .aux / .toc 等辅助文件
+    result1 = subprocess.run(cmd, cwd=output_dir, text=True, encoding="utf-8", errors="replace", capture_output=True, timeout=300)
+    # 第二遍：读入 .toc 生成完整目录（\tableofcontents 需要两遍编译）
+    result2 = subprocess.run(cmd, cwd=output_dir, text=True, encoding="utf-8", errors="replace", capture_output=True, timeout=300)
+    log = result1.stdout + "\n" + result2.stdout + "\n" + result1.stderr + "\n" + result2.stderr
     build_log.write_text(log, encoding="utf-8")
-    return result.returncode == 0, log
+    return result2.returncode == 0, log
 
 
 def auto_select_report_type(request_text: str | None, materials_index: dict) -> tuple[str, str]:
