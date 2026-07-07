@@ -5,6 +5,7 @@
     { href: '/', label: '首页', icon: '🏠' },
     { href: '/upload', label: '上传账单', icon: '📸' },
     { href: '/records', label: '就诊记录', icon: '📋' },
+    { href: '/reports', label: '分析报告', icon: '📄' },
     { href: '/pets', label: '宠物档案', icon: '🐾' },
     { href: '/hospitals', label: '医院推荐', icon: '🏥' },
     { href: '/insurance', label: '保单管理', icon: '🛡️' },

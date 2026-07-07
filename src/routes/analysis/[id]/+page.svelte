@@ -10,6 +10,13 @@
   let hospitals: any[] = $state([]);
   let showAllHospitals = $state(false);
 
+  // 报告相关状态
+  let activeTab = $state<'items' | 'report'>('items');
+  let reportMarkdown = $state<string | null>(null);
+  let reportLoading = $state(false);
+  let reportError = $state<string | null>(null);
+  let reportQa = $state<{ passed: boolean; warnings: string[] } | null>(null);
+
   onMount(async () => {
     try {
       const res = await fetch(`/api/records/${$page.params.id}`);
@@ -29,12 +36,136 @@
           if (hRes.ok) hospitals = await hRes.json();
         } catch { /* ignore */ }
       }
+
+      // 检查是否有已生成的报告
+      await loadExistingReport();
     } catch (e) {
       error = '加载失败';
     } finally {
       loading = false;
     }
   });
+
+  /** 尝试加载已生成的报告 */
+  async function loadExistingReport() {
+    try {
+      const res = await fetch(`/api/reports?type=&limit=5`);
+      if (!res.ok) return;
+      const data = await res.json();
+      // 查找关联到本记录的报告
+      const relatedReport = data.reports.find((r: any) =>
+        r.recordId === $page.params.id
+      );
+      if (relatedReport) {
+        reportMarkdown = relatedReport.markdown;
+        reportQa = relatedReport.qaResult;
+      }
+    } catch { /* ignore */ }
+  }
+
+  /** 生成报告 */
+  async function generateReport() {
+    reportLoading = true;
+    reportError = null;
+    try {
+      // 获取项目数据用于报告生成
+      const analysisBody = {
+        items: items.map((it: any) => ({
+          rawName: it.raw_name,
+          amount: it.amount,
+          category: it.category,
+        })),
+        hospitalName: record.hospital_name,
+        city: record.hospital_city,
+        visitDate: record.visit_date,
+        visitReason: record.visit_reason,
+        diagnosis: record.diagnosis,
+        totalAmount: record.total_amount,
+        rawOcrText: record.raw_ocr_text,
+        useLlm: false,
+        format: 'report',
+        reportType: 'auto',
+        requestText: record.visit_reason || '账单分析',
+      };
+
+      const res = await fetch('/api/analyze?format=report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(analysisBody),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || '报告生成失败');
+      }
+
+      const data = await res.json();
+      if (data.report?.markdown) {
+        reportMarkdown = data.report.markdown;
+        reportQa = { passed: data.report.qaPassed, warnings: data.report.qaWarnings || [] };
+        activeTab = 'report';
+      } else {
+        throw new Error('报告生成成功但未返回内容');
+      }
+    } catch (e) {
+      reportError = e instanceof Error ? e.message : '报告生成失败';
+    } finally {
+      reportLoading = false;
+    }
+  }
+
+  /** 下载报告 */
+  function downloadReport() {
+    if (!reportMarkdown) return;
+    const blob = new Blob([reportMarkdown], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const petName = record?.hospital_name || '未知医院';
+    const date = record?.visit_date || new Date().toISOString().split('T')[0];
+    a.download = `${date}_${petName}_报告.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /** 简单的 Markdown 到 HTML 转换 */
+  function markdownToHtml(md: string): string {
+    let html = md
+      // 转义 HTML
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      // 标题
+      .replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold mt-5 mb-2 text-gray-800">$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold mt-6 mb-3 text-gray-900 border-b pb-1">$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold mt-4 mb-4 text-gray-900">$1</h1>')
+      // 粗体 / 斜体
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+      // 表格
+      .replace(/^\|(.+)\|$/gm, (match) => {
+        if (match.includes('---')) return '<tr class="border-b border-gray-200"></tr>';
+        const cells = match.split('|').filter(c => c.trim()).map(c => c.trim());
+        const tag = match.startsWith('|') && !match.includes('---') ? 'td' : 'td';
+        return `<tr class="border-b border-gray-100">${cells.map(c =>
+          `<${tag} class="px-2 py-1.5 text-sm">${c}</${tag}>`
+        ).join('')}</tr>`;
+      })
+      // 引用
+      .replace(/^> (.+)$/gm, '<blockquote class="border-l-3 border-amber-400 bg-amber-50 pl-3 py-1 my-2 text-sm text-amber-800 rounded-r">$1</blockquote>')
+      // 列表
+      .replace(/^- (.+)$/gm, '<li class="ml-4 text-sm text-gray-600">• $1</li>')
+      .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 text-sm text-gray-600">$1</li>')
+      // 分隔
+      .replace(/^---$/gm, '<hr class="my-4 border-gray-200">')
+      // 代码块
+      .replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-100 p-3 rounded text-xs overflow-x-auto my-2">$1</pre>')
+      // 段落
+      .replace(/\n\n/g, '</p><p class="text-sm text-gray-600 leading-relaxed my-2">')
+      // 单换行
+      .replace(/\n/g, '<br>');
+
+    return `<p class="text-sm text-gray-600 leading-relaxed my-2">${html}</p>`;
+  }
 
   function printedAmount(item: any): number {
     return item.amount || 0;
@@ -99,6 +230,35 @@
         </div>
       </div>
     </div>
+
+    <!-- Tab 切换 -->
+    <div class="flex border-b border-gray-200 gap-1">
+      <button
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-[1px]"
+        class:border-primary-500={activeTab === 'items'}
+        class:text-primary-600={activeTab === 'items'}
+        class:border-transparent={activeTab !== 'items'}
+        class:text-gray-500={activeTab !== 'items'}
+        class:hover:text-gray-700={activeTab !== 'items'}
+        onclick={() => activeTab = 'items'}
+      >
+        📋 逐项解读
+      </button>
+      <button
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-[1px]"
+        class:border-primary-500={activeTab === 'report'}
+        class:text-primary-600={activeTab === 'report'}
+        class:border-transparent={activeTab !== 'report'}
+        class:text-gray-500={activeTab !== 'report'}
+        class:hover:text-gray-700={activeTab !== 'report'}
+        onclick={() => activeTab = 'report'}
+      >
+        📄 综合报告
+      </button>
+    </div>
+
+    <!-- Tab 内容: 逐项解读 -->
+    {#if activeTab === 'items'}
 
     <!-- 分析摘要 -->
     {#if items.length > 0}
@@ -269,10 +429,89 @@
       </div>
     {/if}
 
-    <!-- 操作按钮 -->
+    <!-- 操作按钮 (逐项解读 Tab) -->
     <div class="flex gap-3 justify-end">
       <a href="/records" class="btn-secondary">返回记录</a>
       <a href="/upload" class="btn-primary">分析新账单</a>
     </div>
+
+    {:else}
+    <!-- Tab 内容: 综合报告 -->
+    <div class="space-y-4">
+      {#if reportMarkdown}
+        <!-- QA 状态条 -->
+        {#if reportQa}
+          <div class="flex items-center gap-3 p-3 rounded-lg {reportQa.passed ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}">
+            <span class="text-lg">{reportQa.passed ? '✅' : '⚠️'}</span>
+            <div>
+              <span class="text-sm font-medium {reportQa.passed ? 'text-emerald-700' : 'text-amber-700'}">
+                {reportQa.passed ? '报告质检通过' : '报告质检有警告'}
+              </span>
+              {#if reportQa.warnings.length > 0}
+                <div class="text-xs text-amber-600 mt-0.5">
+                  {reportQa.warnings.join('；')}
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
+        <!-- 报告内容 -->
+        <div class="card bg-white prose-sm max-w-none">
+          {@html markdownToHtml(reportMarkdown)}
+        </div>
+
+        <!-- 下载按钮 -->
+        <div class="flex gap-3 justify-end">
+          <button class="btn-secondary" onclick={downloadReport}>
+            📥 下载 Markdown
+          </button>
+          <button class="btn-secondary" onclick={() => {
+            if (!reportMarkdown) return;
+            const blob = new Blob([reportMarkdown], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            URL.revokeObjectURL(url);
+          }}>
+            🖨️ 打印
+          </button>
+        </div>
+      {:else}
+        <!-- 未生成报告 -->
+        <div class="card text-center py-12">
+          <div class="text-4xl mb-4">📄</div>
+          <h3 class="text-lg font-semibold text-gray-800 mb-2">综合报告</h3>
+          <p class="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+            报告将生成完整叙事结构，包含费用来源、逐项解读、合理性分析和后续建议，
+            并以 Markdown 格式输出，支持下载和打印。
+          </p>
+
+          {#if reportError}
+            <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 mb-4 max-w-md mx-auto">
+              ❌ {reportError}
+            </div>
+          {/if}
+
+          <button
+            class="btn-primary text-base px-6 py-2.5"
+            onclick={generateReport}
+            disabled={reportLoading}
+          >
+            {reportLoading ? '⏳ 生成中...' : '✨ 生成报告'}
+          </button>
+
+          <p class="text-xs text-gray-400 mt-3">
+            基于 pet-vault-skill 报告编排引擎生成
+          </p>
+        </div>
+      {/if}
+    </div>
+
+    <!-- 底部操作 (报告 Tab) -->
+    <div class="flex gap-3 justify-end">
+      <a href="/records" class="btn-secondary">返回记录</a>
+      <a href="/reports" class="btn-secondary">报告列表</a>
+    </div>
+  {/if}
   {/if}
 </div>

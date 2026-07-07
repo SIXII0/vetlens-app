@@ -154,6 +154,25 @@ CREATE VIRTUAL TABLE IF NOT EXISTS kb_terms_fts USING fts5(
   content_rowid='rowid'
 );
 
+-- 报告
+CREATE TABLE IF NOT EXISTS reports (
+  id            TEXT PRIMARY KEY,
+  record_id     TEXT REFERENCES records(id) ON DELETE SET NULL,
+  pet_id        TEXT REFERENCES pets(id) ON DELETE SET NULL,
+  report_type   TEXT NOT NULL,
+  title         TEXT NOT NULL,
+  pet_name      TEXT,
+  report_md     TEXT NOT NULL,
+  report_tex    TEXT,
+  report_pdf    TEXT,
+  manifest_json TEXT NOT NULL,
+  qa_result_json TEXT NOT NULL,
+  created_at    TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reports_record ON reports(record_id);
+CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(report_type);
+CREATE INDEX IF NOT EXISTS idx_reports_created ON reports(created_at);
+
 -- 触发器: 保持 FTS 索引同步
 CREATE TRIGGER IF NOT EXISTS kb_terms_ai AFTER INSERT ON kb_terms BEGIN
   INSERT INTO kb_terms_fts(rowid, name, aliases, plain_explain)

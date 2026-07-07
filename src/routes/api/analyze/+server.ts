@@ -1,15 +1,22 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { analyzeBill } from '$lib/server/engine/explainer';
+import { composeReport, selectReportType } from '$lib/server/engine/reporter';
 import { getLlmAdapter } from '$lib/server/llm/index';
 import { createRecord, insertLineItems } from '$lib/server/db/records';
+import { saveReport } from '$lib/server/db/reports';
+import type { AnalyzedItem } from '$lib/server/engine/types';
 import { v4 as uuid } from 'uuid';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, url }) => {
   const startTime = Date.now();
 
   try {
     const body = await request.json();
+
+    // 报告格式：json | report（默认 json）
+    const outputFormat = url.searchParams.get('format') || body.format || 'json';
+    const reportTypeParam = url.searchParams.get('type') || body.reportType || 'auto';
 
     // 检查是否启用 LLM
     const useLlm = body.useLlm === true;
@@ -94,11 +101,59 @@ export const POST: RequestHandler = async ({ request }) => {
       record = null;
     }
 
-    return json({
+    // ---- 报告生成（pet-vault-skill 模式） ----
+    let reportResult = null;
+    if (outputFormat === 'report' || outputFormat === 'full') {
+      try {
+        reportResult = composeReport({
+          petName: body.petName,
+          visitDate: input.visitDate,
+          hospitalName: input.hospitalName,
+          visitReason: body.visitReason,
+          diagnosis: body.diagnosis,
+          city: input.city,
+          items: result.items as AnalyzedItem[],
+          summary: result.summary,
+          totalAmount: result.totalAmount,
+          reportType: reportTypeParam !== 'auto' ? reportTypeParam : 'auto',
+          requestText: body.requestText || body.visitReason,
+          rawOcrText: body.rawOcrText,
+          recordId: record?.id,
+        });
+
+        // 持久化报告
+        saveReport({
+          ...reportResult,
+          recordId: record?.id,
+          petId: input.petId,
+        });
+
+        console.log(`[VetLens] 报告已生成: ${reportResult.reportId}` +
+          `, 类型=${reportResult.reportType}, QA=${reportResult.qaResult.passed ? '✅' : '⚠️'}`);
+      } catch (reportErr) {
+        console.error('[VetLens] 报告生成失败:', reportErr);
+      }
+    }
+
+    // 构建响应
+    const responseData: Record<string, unknown> = {
       ...result,
       recordId: record?.id || null,
-      llmUsed: llmAvailable
-    });
+      llmUsed: llmAvailable,
+    };
+
+    if (reportResult) {
+      responseData.report = {
+        id: reportResult.reportId,
+        type: reportResult.reportType,
+        title: reportResult.title,
+        markdown: outputFormat === 'report' ? reportResult.markdown : undefined,
+        qaPassed: reportResult.qaResult.passed,
+        qaWarnings: reportResult.qaResult.warnings,
+      };
+    }
+
+    return json(responseData);
   } catch (err) {
     console.error('[VetLens] 分析失败:', err);
     return json({
