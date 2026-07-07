@@ -129,6 +129,25 @@ export interface HospitalInfo {
   distance?: number; // km
 }
 
+// ---- 花费统计 (方案1+3) ----
+
+export interface MonthlyTrend { month: number; total: number; count: number; }
+export interface CategoryBreakdown { category: string; total: number; count: number; pct: number; }
+
+export interface InsuranceNetSpending {
+  hasPolicy: boolean; policyId?: string; company?: string; productName?: string;
+  annualLimit: number; deductible: number; reimbursementRate: number;
+  totalSpent: number; estimatedPayout: number; netOutOfPocket: number;
+  limitUsedPct: number; deductibleMet: boolean;
+}
+
+export interface SpendingStats {
+  petId: string; petName: string; year: number;
+  annualTotal: number; visitCount: number; avgPerVisit: number;
+  monthlyTrend: MonthlyTrend[]; categoryBreakdown: CategoryBreakdown[];
+  insurance: InsuranceNetSpending | null;
+}
+
 // ---- 知识库源接口（预留扩展） ----
 
 export interface KnowledgeSource {

@@ -15,30 +15,37 @@
 
   // 展开的宠物 ID + 统计数据
   let expandedId = $state<string | null>(null);
-  let petStats = $state<Record<string, { records: number; policies: number }>>({});
+  let spendingData = $state<any>(null);
+  let spendingLoading = $state(false);
 
   onMount(() => {
     loadPets();
-    loadAllStats();
   });
 
-  async function loadAllStats() {
+  /** 切换展开 / 折叠，展开时加载花费数据 */
+  async function toggleExpand(petId: string) {
+    if (expandedId === petId) {
+      expandedId = null;
+      spendingData = null;
+      return;
+    }
+    expandedId = petId;
+    spendingLoading = true;
+    spendingData = null;
     try {
-      const [recRes, polRes] = await Promise.all([
-        fetch('/api/records?limit=1'),
-        fetch('/api/insurance'),
-      ]);
-      if (recRes.ok) {
-        const data = await recRes.json();
-        // 按 pet_id 统计记录数（粗略——API 返回的是总数，需要逐条请求）
-        // 这里简化：只统计是否有记录
-      }
+      const res = await fetch(`/api/pets/${petId}/spending?year=${new Date().getFullYear()}`);
+      if (res.ok) spendingData = await res.json();
     } catch { /* ignore */ }
+    spendingLoading = false;
   }
 
-  /** 切换展开 / 折叠 */
-  function toggleExpand(petId: string) {
-    expandedId = expandedId === petId ? null : petId;
+  function formatCompact(n: number): string {
+    if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+    return '¥' + n.toLocaleString('zh-CN');
+  }
+
+  function barWidth(pct: number): string {
+    return Math.max(pct, 3) + '%';
   }
 
   /** 为该宠物添加就诊记录 */
@@ -239,10 +246,114 @@
             </div>
           </div>
 
-          <!-- 展开后的操作面板 -->
+          <!-- 展开后的花费看板 + 操作面板 -->
           {#if expandedId === pet.id}
-            <div class="mt-4 pt-4 border-t border-gray-100 space-y-2">
-              <p class="text-xs text-gray-500 mb-3">选择要为此宠物添加的内容：</p>
+            <div class="mt-4 pt-4 border-t border-gray-100 space-y-4">
+              <!-- 花费看板 -->
+              {#if spendingLoading}
+                <div class="text-center py-4 text-sm text-gray-400">加载花费数据...</div>
+              {:else if spendingData}
+                <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+                  <h4 class="text-sm font-semibold text-gray-700">
+                    📊 {spendingData.year}年花费看板
+                  </h4>
+
+                  <!-- 三指标 -->
+                  <div class="grid grid-cols-3 gap-3 text-center">
+                    <div class="bg-white rounded p-2">
+                      <div class="text-lg font-bold text-gray-900">{formatCompact(spendingData.annualTotal)}</div>
+                      <div class="text-xs text-gray-500">年度总花费</div>
+                    </div>
+                    <div class="bg-white rounded p-2">
+                      <div class="text-lg font-bold text-gray-900">{spendingData.visitCount} 次</div>
+                      <div class="text-xs text-gray-500">就诊次数</div>
+                    </div>
+                    <div class="bg-white rounded p-2">
+                      <div class="text-lg font-bold text-gray-900">{formatCompact(spendingData.avgPerVisit)}</div>
+                      <div class="text-xs text-gray-500">单次均价</div>
+                    </div>
+                  </div>
+
+                  <!-- 月度趋势条 -->
+                  {#if spendingData.annualTotal > 0}
+                    <div>
+                      <div class="text-xs text-gray-500 mb-1">月度趋势</div>
+                      <div class="flex gap-0.5 items-end h-10">
+                        {#each spendingData.monthlyTrend as m}
+                          {@const maxH = Math.max(...spendingData.monthlyTrend.map((x: any) => x.total), 1)}
+                          <div
+                            class="flex-1 bg-primary-400 rounded-t-sm transition-all"
+                            style="height: {Math.max((m.total / maxH) * 100, m.total > 0 ? 8 : 2)}%"
+                            title="{m.month}月: ¥{m.total}"
+                          ></div>
+                        {/each}
+                      </div>
+                      <div class="flex justify-between text-xs text-gray-400 mt-1">
+                        <span>1月</span><span>6月</span><span>12月</span>
+                      </div>
+                    </div>
+                  {/if}
+
+                  <!-- 费用构成 -->
+                  {#if spendingData.categoryBreakdown.length > 0}
+                    <div>
+                      <div class="text-xs text-gray-500 mb-1">费用构成</div>
+                      <div class="space-y-1">
+                        {#each spendingData.categoryBreakdown.slice(0, 5) as cat}
+                          <div class="flex items-center gap-2 text-xs">
+                            <span class="w-10 text-gray-500 flex-shrink-0">{cat.category}</span>
+                            <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div class="h-full bg-primary-500 rounded-full" style="width: {barWidth(cat.pct)}"></div>
+                            </div>
+                            <span class="text-gray-600 w-10 text-right">{cat.pct}%</span>
+                          </div>
+                        {/each}
+                      </div>
+                    </div>
+                  {/if}
+
+                  <!-- 保险净支出 -->
+                  {#if spendingData.insurance?.hasPolicy}
+                    {@const ins = spendingData.insurance}
+                    <div class="border-t border-gray-200 pt-3">
+                      <div class="text-xs text-gray-500 mb-2">
+                        🛡️ 保险净支出（{ins.company} — {ins.productName}）
+                      </div>
+                      <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div class="bg-white rounded p-1.5">
+                          <div class="font-semibold text-gray-800">{formatCompact(ins.totalSpent)}</div>
+                          <div class="text-gray-400">总花费</div>
+                        </div>
+                        <div class="bg-white rounded p-1.5">
+                          <div class="font-semibold text-emerald-600">{formatCompact(ins.estimatedPayout)}</div>
+                          <div class="text-gray-400">预计赔付</div>
+                        </div>
+                        <div class="bg-white rounded p-1.5">
+                          <div class="font-semibold text-amber-600">{formatCompact(ins.netOutOfPocket)}</div>
+                          <div class="text-gray-400">实际自付</div>
+                        </div>
+                      </div>
+                      <div class="mt-2 space-y-1 text-xs text-gray-500">
+                        <div class="flex items-center gap-2">
+                          <span class="w-16">保单利用率</span>
+                          <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-500 rounded-full" style="width: {Math.min(ins.limitUsedPct, 100)}%"></div>
+                          </div>
+                          <span>{ins.limitUsedPct}%</span>
+                        </div>
+                        <div>免赔额 {formatCompact(ins.deductible)} {ins.deductibleMet ? '✅ 已满足' : '⚠️ 未达到'}</div>
+                      </div>
+                    </div>
+                  {:else if spendingData.annualTotal > 0}
+                    <div class="text-xs text-gray-400 text-center py-1">
+                      💡 添加保单后可查看预计赔付和实际自付
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+
+              <!-- 操作按钮 -->
+              <p class="text-xs text-gray-500">选择要为此宠物添加的内容：</p>
               <div class="grid grid-cols-2 gap-2">
                 <button
                   class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100"
