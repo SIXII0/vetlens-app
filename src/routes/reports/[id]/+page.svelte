@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { formatDate } from '$lib/utils/format';
+  import { markdownToHtml } from '$lib/utils/markdown';
 
   let loading = $state(true);
   let error = $state<string | null>(null);
@@ -48,31 +49,6 @@
     URL.revokeObjectURL(url);
   }
 
-  function markdownToHtml(md: string): string {
-    let html = md
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold mt-5 mb-2 text-gray-800">$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold mt-6 mb-3 text-gray-900 border-b pb-1">$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold mt-4 mb-4 text-gray-900">$1</h1>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-      .replace(/^\|(.+)\|$/gm, (match) => {
-        if (match.includes('---')) return '<tr class="border-b border-gray-200"></tr>';
-        const cells = match.split('|').filter(c => c.trim()).map(c => c.trim());
-        return `<tr class="border-b border-gray-100">${cells.map(c =>
-          `<td class="px-2 py-1.5 text-sm">${c}</td>`
-        ).join('')}</tr>`;
-      })
-      .replace(/^> (.+)$/gm, '<blockquote class="border-l-3 border-amber-400 bg-amber-50 pl-3 py-1 my-2 text-sm text-amber-800 rounded-r">$1</blockquote>')
-      .replace(/^- (.+)$/gm, '<li class="ml-4 text-sm text-gray-600">• $1</li>')
-      .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 text-sm text-gray-600">$1</li>')
-      .replace(/^---$/gm, '<hr class="my-4 border-gray-200">')
-      .replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-100 p-3 rounded text-xs overflow-x-auto my-2">$1</pre>')
-      .replace(/\n\n/g, '</p><p class="text-sm text-gray-600 leading-relaxed my-2">')
-      .replace(/\n/g, '<br>');
-    return `<p class="text-sm text-gray-600 leading-relaxed my-2">${html}</p>`;
-  }
 </script>
 
 <div class="max-w-4xl mx-auto space-y-6">
@@ -137,16 +113,6 @@
     <div class="card bg-white prose-sm max-w-none">
       {@html markdownToHtml(report.markdown)}
     </div>
-
-    <!-- 清单信息 -->
-    {#if report.manifest}
-      <details class="card bg-gray-50 border border-gray-200">
-        <summary class="cursor-pointer text-sm font-medium text-gray-600">📋 报告清单 (Manifest)</summary>
-        <div class="mt-3 p-3 bg-white rounded border border-gray-100">
-          <pre class="text-xs text-gray-600 whitespace-pre-wrap overflow-x-auto">{JSON.stringify(report.manifest, null, 2)}</pre>
-        </div>
-      </details>
-    {/if}
 
     <!-- QA 详情 -->
     {#if report.qaResult?.checks?.length > 0}

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { formatCurrency, formatDate, priceLevelBadge } from '$lib/utils/format';
+  import { markdownToHtml } from '$lib/utils/markdown';
 
   let loading = $state(true);
   let error = $state<string | null>(null);
@@ -126,45 +127,6 @@
     a.download = `${date}_${petName}_报告.md`;
     a.click();
     URL.revokeObjectURL(url);
-  }
-
-  /** 简单的 Markdown 到 HTML 转换 */
-  function markdownToHtml(md: string): string {
-    let html = md
-      // 转义 HTML
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      // 标题
-      .replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold mt-5 mb-2 text-gray-800">$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold mt-6 mb-3 text-gray-900 border-b pb-1">$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold mt-4 mb-4 text-gray-900">$1</h1>')
-      // 粗体 / 斜体
-      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-      // 表格
-      .replace(/^\|(.+)\|$/gm, (match) => {
-        if (match.includes('---')) return '<tr class="border-b border-gray-200"></tr>';
-        const cells = match.split('|').filter(c => c.trim()).map(c => c.trim());
-        const tag = match.startsWith('|') && !match.includes('---') ? 'td' : 'td';
-        return `<tr class="border-b border-gray-100">${cells.map(c =>
-          `<${tag} class="px-2 py-1.5 text-sm">${c}</${tag}>`
-        ).join('')}</tr>`;
-      })
-      // 引用
-      .replace(/^> (.+)$/gm, '<blockquote class="border-l-3 border-amber-400 bg-amber-50 pl-3 py-1 my-2 text-sm text-amber-800 rounded-r">$1</blockquote>')
-      // 列表
-      .replace(/^- (.+)$/gm, '<li class="ml-4 text-sm text-gray-600">• $1</li>')
-      .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 text-sm text-gray-600">$1</li>')
-      // 分隔
-      .replace(/^---$/gm, '<hr class="my-4 border-gray-200">')
-      // 代码块
-      .replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-100 p-3 rounded text-xs overflow-x-auto my-2">$1</pre>')
-      // 段落
-      .replace(/\n\n/g, '</p><p class="text-sm text-gray-600 leading-relaxed my-2">')
-      // 单换行
-      .replace(/\n/g, '<br>');
-
-    return `<p class="text-sm text-gray-600 leading-relaxed my-2">${html}</p>`;
   }
 
   function printedAmount(item: any): number {

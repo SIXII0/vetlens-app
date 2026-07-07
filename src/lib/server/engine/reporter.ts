@@ -354,13 +354,6 @@ export function composeReport(input: ReportInput): ReportResult {
   } else {
     sections.push('本次分析未包含具体的费用项目记录。');
   }
-  if (input.rawOcrText) {
-    sections.push('');
-    sections.push('**OCR 识别原始文本**（供参考）：');
-    sections.push('```');
-    sections.push(input.rawOcrText.slice(0, 2000));
-    sections.push('```');
-  }
   sections.push('');
 
   // 2. 事实
