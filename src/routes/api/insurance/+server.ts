@@ -29,7 +29,8 @@ export const POST: RequestHandler = async ({ request }) => {
     deductible: body.deductible,
     reimbursementRate: body.reimbursementRate,
     annualLimit: body.annualLimit,
-    rawTermsText: body.rawTermsText
+    rawTermsText: body.rawTermsText,
+    structuredTerms: body.structuredTerms,
   });
   return json(policy, { status: 201 });
 };

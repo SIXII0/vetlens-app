@@ -12,7 +12,7 @@
     status: string;
     pet_id: string | null;
   }> = [];
-  let stats = { termCount: 0, recordCount: 0 };
+  let stats = { recordCount: 0 };
 
   onMount(async () => {
     // 加载宠物
@@ -25,15 +25,6 @@
         const data = await res.json();
         recentRecords = data.records;
         stats.recordCount = data.total;
-      }
-    } catch { /* ignore */ }
-
-    // 加载知识库统计
-    try {
-      const res = await fetch('/api/knowledge/search?action=stats');
-      if (res.ok) {
-        const data = await res.json();
-        stats.termCount = data.termCount;
       }
     } catch { /* ignore */ }
   });
@@ -79,11 +70,7 @@
   </div>
 
   <!-- 统计卡片 -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    <div class="card text-center">
-      <div class="text-2xl font-bold text-primary-600">{stats.termCount}</div>
-      <div class="text-xs text-gray-500 mt-1">知识库术语</div>
-    </div>
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
     <div class="card text-center">
       <div class="text-2xl font-bold text-vet-green">{stats.recordCount}</div>
       <div class="text-xs text-gray-500 mt-1">就诊记录</div>

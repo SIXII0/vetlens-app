@@ -32,17 +32,18 @@ export function createPolicy(data: {
   reimbursementRate?: number;
   annualLimit?: number;
   rawTermsText?: string;
+  structuredTerms?: string;
 }): PolicyRow {
   const db = getDb();
   const id = uuid();
   db.prepare(`
-    INSERT INTO insurance_policies (id, pet_id, company, product_name, policy_number, effective_date, expiry_date, waiting_period, deductible, reimbursement_rate, annual_limit, raw_terms_text, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+    INSERT INTO insurance_policies (id, pet_id, company, product_name, policy_number, effective_date, expiry_date, waiting_period, deductible, reimbursement_rate, annual_limit, raw_terms_text, structured_terms, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
   `).run(
     id, data.petId || null, data.company, data.productName,
     data.policyNumber || null, data.effectiveDate || null, data.expiryDate || null,
     data.waitingPeriod || null, data.deductible || null, data.reimbursementRate || null,
-    data.annualLimit || null, data.rawTermsText || null
+    data.annualLimit || null, data.rawTermsText || null, data.structuredTerms || null
   );
 
   return db.prepare('SELECT * FROM insurance_policies WHERE id = ?').get(id) as PolicyRow;

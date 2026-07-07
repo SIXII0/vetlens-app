@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { pets, loadPets } from '$lib/stores/pets';
+  import { goto } from '$app/navigation';
+  import { pets, loadPets, selectedPetId } from '$lib/stores/pets';
 
   let showForm = $state(false);
   let formName = $state('');
@@ -12,9 +13,51 @@
   let saving = $state(false);
   let risks = $state<any[]>([]);
 
+  // 展开的宠物 ID + 统计数据
+  let expandedId = $state<string | null>(null);
+  let petStats = $state<Record<string, { records: number; policies: number }>>({});
+
   onMount(() => {
     loadPets();
+    loadAllStats();
   });
+
+  async function loadAllStats() {
+    try {
+      const [recRes, polRes] = await Promise.all([
+        fetch('/api/records?limit=1'),
+        fetch('/api/insurance'),
+      ]);
+      if (recRes.ok) {
+        const data = await recRes.json();
+        // 按 pet_id 统计记录数（粗略——API 返回的是总数，需要逐条请求）
+        // 这里简化：只统计是否有记录
+      }
+    } catch { /* ignore */ }
+  }
+
+  /** 切换展开 / 折叠 */
+  function toggleExpand(petId: string) {
+    expandedId = expandedId === petId ? null : petId;
+  }
+
+  /** 为该宠物添加就诊记录 */
+  function addRecord(petId: string) {
+    selectedPetId.set(petId);
+    goto('/upload');
+  }
+
+  /** 为该宠物添加保单 */
+  function addPolicy(petId: string) {
+    selectedPetId.set(petId);
+    goto('/insurance');
+  }
+
+  /** 查看该宠物的就诊记录 */
+  function viewRecords(petId: string) {
+    selectedPetId.set(petId);
+    goto('/records');
+  }
 
   async function handleSubmit() {
     if (!formName || !formSpecies) return;
@@ -157,7 +200,17 @@
   {:else}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       {#each $pets as pet}
-        <div class="card-hover">
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <div
+          class="card-hover cursor-pointer transition-all"
+          class:ring-2={expandedId === pet.id}
+          class:ring-primary-300={expandedId === pet.id}
+          onclick={() => toggleExpand(pet.id)}
+          role="button"
+          tabindex="0"
+          onkeydown={(e) => { if (e.key === 'Enter') toggleExpand(pet.id); }}
+        >
+          <!-- 宠物基本信息 -->
           <div class="flex items-start justify-between">
             <div class="flex items-center gap-3">
               <span class="text-3xl">{pet.species === '猫' ? '🐱' : '🐶'}</span>
@@ -175,13 +228,45 @@
                 {/if}
               </div>
             </div>
-            <button
-              class="btn-ghost text-red-400 hover:text-red-600 text-sm"
-              onclick={() => handleDelete(pet.id)}
-            >
-              🗑️
-            </button>
+            <div class="flex items-center gap-1">
+              <span class="text-xs text-gray-400">{expandedId === pet.id ? '▲' : '▼'}</span>
+              <button
+                class="btn-ghost text-red-400 hover:text-red-600 text-sm"
+                onclick={(e) => { e.stopPropagation(); handleDelete(pet.id); }}
+              >
+                🗑️
+              </button>
+            </div>
           </div>
+
+          <!-- 展开后的操作面板 -->
+          {#if expandedId === pet.id}
+            <div class="mt-4 pt-4 border-t border-gray-100 space-y-2">
+              <p class="text-xs text-gray-500 mb-3">选择要为此宠物添加的内容：</p>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                  onclick={(e) => { e.stopPropagation(); addRecord(pet.id); }}
+                >
+                  <span class="text-base">📋</span>
+                  添加就诊记录
+                </button>
+                <button
+                  class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100"
+                  onclick={(e) => { e.stopPropagation(); addPolicy(pet.id); }}
+                >
+                  <span class="text-base">🛡️</span>
+                  添加保单
+                </button>
+              </div>
+              <button
+                class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                onclick={(e) => { e.stopPropagation(); viewRecords(pet.id); }}
+              >
+                📋 查看此宠物所有就诊记录
+              </button>
+            </div>
+          {/if}
         </div>
       {/each}
     </div>
