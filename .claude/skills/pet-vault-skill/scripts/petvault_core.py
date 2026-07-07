@@ -922,7 +922,7 @@ def compile_pdf(tex_path: Path, output_dir: Path, skip: bool = False) -> tuple[b
         cmd = [engine, "-xelatex", "-interaction=nonstopmode", tex_path.name]
     else:
         cmd = [engine, "-interaction=nonstopmode", tex_path.name]
-    result = subprocess.run(cmd, cwd=output_dir, text=True, encoding="utf-8", errors="replace", capture_output=True, timeout=120)
+    result = subprocess.run(cmd, cwd=output_dir, text=True, encoding="utf-8", errors="replace", capture_output=True, timeout=300)
     log = result.stdout + "\n" + result.stderr
     build_log.write_text(log, encoding="utf-8")
     return result.returncode == 0, log

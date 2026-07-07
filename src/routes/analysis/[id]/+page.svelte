@@ -115,6 +115,55 @@
     }
   }
 
+  // PDF 生成状态
+  let pdfGenerating = $state(false);
+  let pdfError = $state<string | null>(null);
+  let pdfBase64 = $state<string | null>(null);
+
+  /** 生成并下载 PDF */
+  async function generatePdf() {
+    pdfGenerating = true;
+    pdfError = null;
+    try {
+      const res = await fetch('/api/report/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recordId: $page.params.id,
+          items: items.map((it: any) => ({ name: it.raw_name, amount: it.amount })),
+          hospitalName: record.hospital_name,
+          visitDate: record.visit_date,
+          requestText: record.visit_reason || '账单解释报告',
+          reportType: 'bill_explain',
+          pdfPolicy: 'required',
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.pdfBase64) {
+        pdfBase64 = data.pdfBase64;
+        // 触发下载
+        const byteChars = atob(data.pdfBase64);
+        const byteNums = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
+        const byteArr = new Uint8Array(byteNums);
+        const blob = new Blob([byteArr], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${record?.visit_date || 'report'}_${record?.hospital_name || '未知医院'}_报告.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        pdfError = data.error || 'PDF 生成失败';
+      }
+    } catch (e) {
+      pdfError = `PDF 生成请求失败: ${e instanceof Error ? e.message : '未知错误'}`;
+    } finally {
+      pdfGenerating = false;
+    }
+  }
+
   /** 下载报告 */
   function downloadReport() {
     if (!reportMarkdown) return;
@@ -424,9 +473,19 @@
         </div>
 
         <!-- 下载按钮 -->
+        {#if pdfError}
+          <div class="text-xs text-red-500 mb-2">❌ {pdfError}</div>
+        {/if}
         <div class="flex gap-3 justify-end">
           <button class="btn-secondary" onclick={downloadReport}>
             📥 下载 Markdown
+          </button>
+          <button
+            class="btn-primary"
+            onclick={generatePdf}
+            disabled={pdfGenerating}
+          >
+            {pdfGenerating ? '⏳ 生成中...' : '📄 下载 PDF'}
           </button>
           <button class="btn-secondary" onclick={() => {
             if (!reportMarkdown) return;
