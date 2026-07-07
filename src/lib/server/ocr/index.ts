@@ -205,7 +205,10 @@ const DATE_PATTERN = /(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})|(\d{2}[-\/.]\d{1,2}[-\/.
  * 对单行 OCR 文本进行分类
  */
 function classifyLine(line: string): LineType {
-  const trimmed = line.trim();
+  // 行内归一化：去除汉字间的空格（OCR 有时输出 "血 常 规"）
+  let trimmed = line.trim()
+    .replace(/([一-鿿]) ([一-鿿])/g, '$1$2')
+    .replace(/([一-鿿])\s+([一-鿿])/g, '$1$2');
 
   // 空行 / 过短
   if (trimmed.length < 2) return 'noise';
@@ -215,6 +218,9 @@ function classifyLine(line: string): LineType {
 
   // 长数字串（很可能不是金额，而是编号/流水号）
   if (/^\d{5,}$/.test(trimmed) || /^\d{8,}$/.test(trimmed.replace(/\s/g, ''))) return 'noise';
+
+  // 纯金额行（1-6位数字，可选小数）—— 可能是上一行项目的金额跨行
+  if (/^\s*\d{1,6}(?:[.,]\d{1,2})?\s*$/.test(trimmed)) return 'item';
 
   // 纯符号/数字/字母组合
   // 例外：含金额的短行可能是英文缩写诊疗项目（如"CR 2 100,00 200"）
@@ -226,7 +232,7 @@ function classifyLine(line: string): LineType {
     // 不在此处拦截，继续走后续 item 判断
   }
 
-  // 纯符号/数字
+  // 纯符号/数字噪声（金额行已被上面的规则拦截，这里不会命中金额行）
   if (NOISE_PATTERN.test(trimmed) && trimmed.length < 10) return 'noise';
 
   // 表头行（"序号 项目描述 金额" / "名称 数量 小计"）
@@ -267,7 +273,7 @@ function classifyLine(line: string): LineType {
   // 含金额 → 项目行
   if (AMOUNT_PATTERN.test(trimmed)) return 'item';
 
-  // 含中文 + 长度适中 → 可能是换行的项目名
+  // 含中文 + 长度适中 → 可能是换行的项目名或金额分离行
   if (/[一-龥]{2,}/.test(trimmed) && trimmed.length >= 3) return 'item';
 
   return 'noise';
@@ -370,7 +376,7 @@ function correctOcrErrors(name: string): string {
     ['血常规检', '血常规'],
     ['阿莫西材', '阿莫西林'],
     ['白细泡', '白细胞'],
-    ['生化全', '生化全套'],
+    // ['生化全', '生化全套'],  // 移除：会错误匹配"生化全套"自身（"生化全"是"生化全套"的子串）
     ['全讲', '全套'],
     ['全项', '全套'],
     ['生比', '生化'],
@@ -416,7 +422,22 @@ function extractQuantity(line: string, amountValue?: number): number | undefined
  * OCR 后处理主函数
  */
 function postProcessOcrText(rawText: string): OcrResult['structured'] {
-  const rawLines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  // ---- 文本归一化 ----
+  // 1. 合并汉字之间的空格：OCR 有时输出 "一 次 性 耗 材" 而非 "一次性耗材"
+  let normalizedText = rawText
+    // 两个汉字之间的单个空格 → 去除
+    .replace(/([一-鿿]) ([一-鿿])/g, '$1$2')
+    // 汉字 + 空格 + 汉字（多个空格）→ 去除
+    .replace(/([一-鿿])\s+([一-鿿])/g, '$1$2')
+    // 数字和单位之间的多余空格（如 "150. 00" → "150.00"）
+    .replace(/(\d)\s+\.\s*(\d)/g, '$1.$2')
+    // 逗号小数点后粘合（如 "100, 00" → "100,00"）
+    .replace(/(\d),\s+(\d)/g, '$1,$2');
+
+  const rawLines = normalizedText.split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
+
   const items: OcrResult['structured']['items'] = [];
   let hospitalName: string | undefined;
   let date: string | undefined;
@@ -470,10 +491,27 @@ function postProcessOcrText(rawText: string): OcrResult['structured'] {
     const amtResult = extractAmount(text);
     const cleanedName = cleanItemName(text);
 
-    if (amtResult) {
-      // 有金额 → 完整的项目行
+    // 检测行是否只是纯金额（如 OCR 把金额输出到了单独一行）
+    const isAmountOnly = /^\s*\d{1,6}(?:[.,]\d{1,2})?\s*$/.test(text.trim());
+
+    if (isAmountOnly && pendingName && amtResult) {
+      // 纯金额行 + 有暂存的项目名 → 配对
+      const correctedName = correctOcrErrors(pendingName);
+      const quantity = extractQuantity(text, amtResult.amount);
+      items.push({
+        name: correctedName,
+        amount: amtResult.amount,
+        quantity,
+        line: text,
+      });
+      pendingName = null;
+      continue;
+    }
+
+    if (amtResult && !isAmountOnly) {
+      // 有金额的完整项目行
       const finalName = pendingName
-        ? `${pendingName} ${cleanedName}`.trim()  // 合并上一行的项目名
+        ? `${pendingName} ${cleanedName}`.trim()
         : cleanedName;
 
       if (finalName.length >= 2) {
@@ -487,15 +525,15 @@ function postProcessOcrText(rawText: string): OcrResult['structured'] {
         });
       }
       pendingName = null;
-    } else {
+    } else if (!isAmountOnly) {
       // 无金额但有中文 → 可能是跨行的项目名第一行
       if (pendingName) {
-        // 两个连续的无金额行 → 合并
         pendingName = `${pendingName} ${cleanedName}`.trim();
       } else if (cleanedName.length >= 2) {
         pendingName = cleanedName;
       }
     }
+    // 纯金额行但没有 pendingName → 跳过（孤立的数字）
   }
 
   // 处理最后一个待合并的项目名
