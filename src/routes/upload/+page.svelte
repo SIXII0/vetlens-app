@@ -25,6 +25,12 @@
   let dragOver = $state(false);
   let useLlm = $state(false);
 
+  // 筛选和排序
+  let filterMode = $state<'all' | 'items_only'>('items_only');
+  let sortBy = $state<'original' | 'name' | 'amount'>('original');
+  let llmExtracting = $state(false);
+  let llmExtractError = $state<string | null>(null);
+
   // 初始化默认城市
   $effect(() => {
     city = $settings.defaultCity || '北京';
@@ -210,7 +216,7 @@
           petId: $selectedPetId || undefined,
           visitDate,
           totalAmount,
-          rawOcrText: ocrResult?.rawText || null,
+          rawOcrText: ocrResult?.rawText || ocrResult?.text || null,
           useLlm
         })
       });
@@ -239,6 +245,77 @@
     previewUrl = null;
     ocrError = null;
   }
+
+  // ---- LLM 智能提取 ----
+  async function runLlmExtract() {
+    // 浏览器端 OCR 用 `text`，服务端 OCR 用 `rawText`
+    const rawText = ocrResult?.rawText || ocrResult?.text;
+    if (!rawText) {
+      llmExtractError = '没有可用的 OCR 原始文本。请先进行 OCR 识别。';
+      return;
+    }
+
+    llmExtracting = true;
+    llmExtractError = null;
+
+    try {
+      const res = await fetch('/api/ocr/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawText }),
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.items.length > 0) {
+        editedItems = data.items.map((it: { name: string; amount: number }) => ({
+          name: it.name,
+          amount: it.amount,
+        }));
+        console.log(`[Upload] LLM 提取了 ${data.items.length} 个项目`);
+      } else {
+        llmExtractError = data.error || 'LLM 未提取到项目';
+      }
+    } catch (err) {
+      llmExtractError = `LLM 提取请求失败: ${String(err)}`;
+    } finally {
+      llmExtracting = false;
+    }
+  }
+
+  // ---- 筛选和排序 ----
+  /** 带原始索引的显示项 */
+  interface DisplayItem {
+    name: string;
+    amount: number;
+    _origIdx: number;
+  }
+
+  const filteredItems = $derived.by((): DisplayItem[] => {
+    // 为每项保留原始索引
+    let items: DisplayItem[] = editedItems.map((it, idx) => ({
+      name: it.name,
+      amount: it.amount,
+      _origIdx: idx,
+    }));
+
+    // 过滤：仅显示有名称的费用项
+    if (filterMode === 'items_only') {
+      items = items.filter(it => it.name.trim().length >= 2);
+    }
+
+    // 排序
+    if (sortBy === 'name') {
+      items.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+    } else if (sortBy === 'amount') {
+      items.sort((a, b) => (b.amount || 0) - (a.amount || 0));
+    }
+    // original: 保持原序 (按 _origIdx)
+
+    return items;
+  });
+
+  const filteredCount = $derived(editedItems.length - filteredItems.length);
 
   // ---- 计算 ----
   const totalAmount = $derived(editedItems.reduce((sum, it) => sum + (it.amount || 0), 0));
@@ -406,13 +483,81 @@
 
       <!-- 费用项目编辑表 -->
       <div class="card">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900">费用项目</h3>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-gray-900">
+            费用项目
+            <span class="text-xs text-gray-400 font-normal ml-2">
+              {filteredItems.filter(it => it.name.trim() && it.amount > 0).length} 个有效项目
+            </span>
+          </h3>
           <button class="btn-ghost text-sm" onclick={addItem}>+ 添加项目</button>
         </div>
 
+        <!-- 筛选工具栏 -->
+        <div class="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-100 flex-wrap">
+          <!-- 筛选模式 -->
+          <div class="flex items-center gap-1 bg-white rounded-md border border-gray-200 p-0.5">
+            <button
+              class="px-3 py-1.5 text-xs rounded font-medium transition-colors"
+              class:bg-primary-500={filterMode === 'items_only'}
+              class:text-white={filterMode === 'items_only'}
+              class:text-gray-500={filterMode !== 'items_only'}
+              class:hover:text-gray-700={filterMode !== 'items_only'}
+              onclick={() => filterMode = 'items_only'}
+            >
+              ✅ 仅费用项
+            </button>
+            <button
+              class="px-3 py-1.5 text-xs rounded font-medium transition-colors"
+              class:bg-primary-500={filterMode === 'all'}
+              class:text-white={filterMode === 'all'}
+              class:text-gray-500={filterMode !== 'all'}
+              class:hover:text-gray-700={filterMode !== 'all'}
+              onclick={() => filterMode = 'all'}
+            >
+              📋 全部行
+            </button>
+          </div>
+
+          <!-- 排序 -->
+          <select
+            class="text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-600"
+            bind:value={sortBy}
+          >
+            <option value="original">按原始顺序</option>
+            <option value="name">按名称排序</option>
+            <option value="amount">按金额排序</option>
+          </select>
+
+          <!-- 隐藏项计数 -->
+          {#if filteredCount > 0}
+            <span class="text-xs text-amber-600">
+              ⚠️ 已过滤 {filteredCount} 个噪声行
+            </span>
+          {/if}
+
+          <!-- LLM 智能提取 -->
+          <div class="flex-1"></div>
+          {#if ocrResult?.rawText || ocrResult?.text}
+            <button
+              class="px-3 py-1.5 text-xs rounded-md font-medium transition-colors border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50"
+              onclick={runLlmExtract}
+              disabled={llmExtracting}
+            >
+              {llmExtracting ? '🤖 提取中...' : '🤖 AI 智能提取'}
+            </button>
+          {/if}
+        </div>
+
+        <!-- LLM 错误提示 -->
+        {#if llmExtractError}
+          <div class="mb-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
+            {llmExtractError}
+          </div>
+        {/if}
+
         <div class="space-y-3">
-          {#each editedItems as item, i}
+          {#each filteredItems as item, i}
             <div class="flex items-center gap-3">
               <span class="text-xs text-gray-400 w-6 text-right">{i + 1}</span>
               <input
@@ -420,7 +565,7 @@
                 class="input-field flex-1"
                 placeholder="项目名称，如：血常规"
                 value={item.name}
-                oninput={(e) => updateItemName(i, (e.target as HTMLInputElement).value)}
+                oninput={(e) => updateItemName(item._origIdx, (e.target as HTMLInputElement).value)}
               />
               <div class="relative w-32">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">¥</span>
@@ -430,18 +575,36 @@
                   class="input-field pl-7 text-right"
                   placeholder="0.00"
                   value={item.amount || ''}
-                  oninput={(e) => updateItemAmount(i, (e.target as HTMLInputElement).value)}
+                  oninput={(e) => updateItemAmount(item._origIdx, (e.target as HTMLInputElement).value)}
                 />
               </div>
               <button
                 class="btn-ghost text-red-400 hover:text-red-600 text-sm px-2"
-                onclick={() => removeItem(i)}
+                onclick={() => removeItem(item._origIdx)}
                 disabled={editedItems.length <= 1}
               >
                 ✕
               </button>
             </div>
           {/each}
+
+          <!-- 显示被过滤的行数 -->
+          {#if filteredCount > 0}
+            <div class="text-center pt-2">
+              <button
+                class="text-xs text-gray-400 hover:text-gray-600"
+                onclick={() => filterMode = 'all'}
+              >
+                📋 显示全部 {editedItems.length} 行（含 {filteredCount} 个噪声行）
+              </button>
+            </div>
+          {/if}
+
+          {#if filteredItems.length === 0}
+            <div class="text-center py-4 text-sm text-gray-400">
+              未识别到费用项目。请切换为"全部行"模式查看 OCR 原始结果，或手动添加项目。
+            </div>
+          {/if}
         </div>
 
         <!-- 合计 -->

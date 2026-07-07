@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:8866/)",
+      "Bash(curl -s http://localhost:8866/ping)",
+      "Bash(curl -s http://localhost:8866/health)",
+      "Bash(tesseract --version)",
+      "Bash(python3 ocr_server/server.py)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(python3 server.py)",
+      "Bash(python3 -c \"import flask; print\\('flask OK'\\)\")",
+      "Bash(python3 -c \"import PIL; print\\('PIL OK'\\)\")",
+      "Bash(python3 -c \"import pytesseract; print\\('pytesseract OK'\\)\")",
+      "Bash(tesseract \"F:/Users/宋泽锋/Desktop/Pet/R-C.png\" stdout -l chi_sim)",
+      "Bash(tesseract \"F:/Users/宋泽锋/Desktop/Pet/R-C.png\" stdout)",
+      "Bash(tesseract --list-langs)"
+    ]
+  }
+}
