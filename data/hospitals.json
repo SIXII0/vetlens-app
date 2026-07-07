@@ -1,0 +1,16 @@
+[
+  {"id":"hosp-bj-01","name":"中国农业大学动物医院","city":"北京","district":"海淀区","address":"圆明园西路2号","phone":"010-62731234","type":"教学医院","transparency_score":3.5,"rating":4.5,"price_level":"高","lat":40.027,"lng":116.281,"source":"public"},
+  {"id":"hosp-bj-02","name":"瑞鹏宠物医院（望京分院）","city":"北京","district":"朝阳区","address":"望京西路","phone":"010-64781234","type":"连锁","transparency_score":3.0,"rating":3.8,"price_level":"中","lat":39.998,"lng":116.474,"source":"public"},
+  {"id":"hosp-bj-03","name":"芭比堂动物医院（五道口）","city":"北京","district":"海淀区","address":"成府路","phone":"010-82861234","type":"连锁","transparency_score":3.5,"rating":4.0,"price_level":"中","lat":39.995,"lng":116.334,"source":"public"},
+  {"id":"hosp-bj-04","name":"美联众合宠物医院（国贸）","city":"北京","district":"朝阳区","address":"建国路","phone":"010-65001234","type":"连锁","transparency_score":3.2,"rating":4.1,"price_level":"高","lat":39.909,"lng":116.463,"source":"public"},
+  {"id":"hosp-bj-05","name":"宠爱国际动物医院（方庄）","city":"北京","district":"丰台区","address":"方庄路","phone":"010-67681234","type":"连锁","transparency_score":3.0,"rating":3.7,"price_level":"中","lat":39.866,"lng":116.428,"source":"public"},
+  {"id":"hosp-bj-06","name":"北京康信宠物医院","city":"北京","district":"通州区","address":"梨园","phone":"010-81501234","type":"社区诊所","transparency_score":4.0,"rating":4.2,"price_level":"低","lat":39.891,"lng":116.662,"source":"public"},
+  {"id":"hosp-bj-07","name":"悦宠动物医院（回龙观）","city":"北京","district":"昌平区","address":"回龙观西大街","phone":"010-81721234","type":"社区诊所","transparency_score":3.8,"rating":4.0,"price_level":"低","lat":40.078,"lng":116.333,"source":"public"},
+  {"id":"hosp-sh-01","name":"上海市农科院动物医院","city":"上海","district":"闵行区","address":"北翟路","phone":"021-62201234","type":"教学医院","transparency_score":3.5,"rating":4.3,"price_level":"高","lat":31.211,"lng":121.362,"source":"public"},
+  {"id":"hosp-sh-02","name":"瑞鹏宠物医院（静安分院）","city":"上海","district":"静安区","address":"南京西路","phone":"021-62171234","type":"连锁","transparency_score":3.0,"rating":3.9,"price_level":"中","lat":31.228,"lng":121.451,"source":"public"},
+  {"id":"hosp-sh-03","name":"宠爱国际动物医院（浦东）","city":"上海","district":"浦东新区","address":"张杨路","phone":"021-58301234","type":"连锁","transparency_score":3.2,"rating":4.0,"price_level":"中","lat":31.239,"lng":121.541,"source":"public"},
+  {"id":"hosp-gz-01","name":"华南农业大学动物医院","city":"广州","district":"天河区","address":"五山路","phone":"020-85281234","type":"教学医院","transparency_score":3.8,"rating":4.4,"price_level":"中","lat":23.158,"lng":113.351,"source":"public"},
+  {"id":"hosp-gz-02","name":"瑞鹏宠物医院（天河分院）","city":"广州","district":"天河区","address":"体育西路","phone":"020-87541234","type":"连锁","transparency_score":3.0,"rating":3.8,"price_level":"中","lat":23.131,"lng":113.324,"source":"public"},
+  {"id":"hosp-sz-01","name":"瑞鹏宠物医院（南山分院）","city":"深圳","district":"南山区","address":"科技园","phone":"0755-26501234","type":"连锁","transparency_score":3.0,"rating":3.9,"price_level":"中","lat":22.537,"lng":113.951,"source":"public"},
+  {"id":"hosp-sz-02","name":"深圳联合宠物医院（福田）","city":"深圳","district":"福田区","address":"华强北","phone":"0755-83201234","type":"社区诊所","transparency_score":3.8,"rating":4.1,"price_level":"中","lat":22.545,"lng":114.084,"source":"public"}
+]

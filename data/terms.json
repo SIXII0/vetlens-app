@@ -1,0 +1,227 @@
+[
+  {
+    "id": "term-cbc",
+    "name": "血常规",
+    "aliases": ["CBC", "血细胞计数", "五分类血常规", "三分类血常规"],
+    "category": "检查",
+    "medical_explain": "通过抽取静脉血，检测红细胞、白细胞、血小板等血液成分的数量和形态，评估感染、炎症、贫血、脱水等状态",
+    "plain_explain": "抽血看看血液里的各种细胞是不是正常——判断有没有感染、发炎、贫血、脱水",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-biochemistry",
+    "name": "生化全套",
+    "aliases": ["血液生化", "大生化", "生化检查", "肝肾生化", "生化十七项"],
+    "category": "检查",
+    "medical_explain": "检测血清中肝功能指标(ALT/AST/ALP/TBIL)、肾功能指标(BUN/CREA)、血糖、蛋白等多项生化参数，综合评估内脏器官功能状态",
+    "plain_explain": "抽血查肝肾功能、血糖、蛋白等十几项指标——了解内脏工作状态",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-blood-gas",
+    "name": "血气分析",
+    "aliases": ["血气", "电解质", "血气电解质"],
+    "category": "检查",
+    "medical_explain": "检测动脉或静脉血的pH值、氧分压、二氧化碳分压、碳酸氢根及电解质浓度，评估酸碱平衡和呼吸功能",
+    "plain_explain": "查血液酸碱度和钾钠氯——判断有没有代谢紊乱和脱水程度",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-ultrasound-abdomen",
+    "name": "腹部超声",
+    "aliases": ["B超", "腹部B超", "腹腔超声"],
+    "category": "检查",
+    "medical_explain": "利用高频超声波对腹腔内脏器进行实时成像检查，评估肝脏、胆囊、脾脏、肾脏、胰腺、肠道、膀胱等器官的形态和结构",
+    "plain_explain": "用超声波看肚子里各器官有没有形态异常——长东西、结石、积水都能看到",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-echocardiography",
+    "name": "心脏超声",
+    "aliases": ["心脏彩超", "心超", "心脏B超"],
+    "category": "检查",
+    "medical_explain": "通过超声心动图评估心脏腔室大小、室壁厚度、瓣膜功能、血流速度和心脏收缩舒张功能，用于筛查心肌病和先天性心脏病",
+    "plain_explain": "用超声波看心脏结构和跳动情况——排查心肌病和心脏结构问题，品种猫尤其重要",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-xray",
+    "name": "X光检查",
+    "aliases": ["DR", "拍片", "X线", "数字X线摄影"],
+    "category": "检查",
+    "medical_explain": "利用X射线穿透不同密度组织时衰减差异产生影像，评估骨骼、胸腔、腹腔等大体结构异常",
+    "plain_explain": "拍片子看骨骼、胸腔、腹腔的大体结构——骨折、异物、心脏大小、肺部情况",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-fpv-test",
+    "name": "猫瘟检测",
+    "aliases": ["FPV检测", "猫瘟试纸", "猫细小病毒检测", "猫瘟快速检测"],
+    "category": "检查",
+    "medical_explain": "检测猫细小病毒抗原或抗体，用于猫瘟（泛白细胞减少症）的快速筛查和诊断",
+    "plain_explain": "快速检测有没有感染猫瘟病毒——幼猫呕吐腹泻必查",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-pcr",
+    "name": "PCR检测",
+    "aliases": ["PCR病原检测", "分子检测", "核酸检测", "PCR五项"],
+    "category": "检查",
+    "medical_explain": "利用聚合酶链式反应扩增病原体特异性核酸片段，实现病原体的高灵敏度、高特异性分子诊断",
+    "plain_explain": "用分子技术检测特定病原体的基因——比试纸准确得多，适合确诊",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-urinalysis",
+    "name": "尿检",
+    "aliases": ["尿常规", "尿液分析", "尿检十项"],
+    "category": "检查",
+    "medical_explain": "检测尿液物理性质、化学成分和沉渣，评估泌尿系统功能和代谢状态",
+    "plain_explain": "查尿里的蛋白、糖、结晶、细菌——了解泌尿系统有没有问题",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-fecal",
+    "name": "便检",
+    "aliases": ["粪检", "粪便检查", "大便常规"],
+    "category": "检查",
+    "medical_explain": "显微镜检查粪便中的寄生虫卵、幼虫、原虫以及消化产物，评估消化道寄生虫感染和消化吸收功能",
+    "plain_explain": "查大便里有没有寄生虫卵——腹泻时常规检查",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-blood-pressure",
+    "name": "血压测量",
+    "aliases": ["测血压", "多普勒血压"],
+    "category": "检查",
+    "medical_explain": "使用多普勒血流仪或示波法血压计测量动脉收缩压，用于高血压筛查和心血管风险评估",
+    "plain_explain": "给猫狗量血压——老年猫和肾病猫建议定期测",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-tonometry",
+    "name": "眼压测量",
+    "aliases": ["眼压计", "测眼压"],
+    "category": "检查",
+    "medical_explain": "使用眼压计测量眼内压，筛查青光眼等眼科疾病",
+    "plain_explain": "测眼睛内部的压力——排查青光眼",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-gabapentin",
+    "name": "加巴喷丁",
+    "aliases": ["Gabapentin"],
+    "category": "药品",
+    "medical_explain": "一种GABA类似物类镇静/镇痛药，通过钙通道调节减少神经递质释放，用于猫就诊前应激预防和慢性神经病理性疼痛管理",
+    "plain_explain": "一种让猫安静放松的药——就诊前吃能减少应激，也能用于慢性疼痛",
+    "necessity_hint": "🟢 可选"
+  },
+  {
+    "id": "term-amoxiclav",
+    "name": "速诺",
+    "aliases": ["阿莫西林克拉维酸", "Amoxiclav", "Synulox"],
+    "category": "药品",
+    "medical_explain": "阿莫西林与克拉维酸的复方制剂，克拉维酸抑制β-内酰胺酶保护阿莫西林不被降解，扩大抗菌谱覆盖产酶耐药菌",
+    "plain_explain": "宠物专用的广谱抗生素——呼吸道、泌尿道、皮肤、牙齿感染都可能用",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-enrofloxacin",
+    "name": "拜有利",
+    "aliases": ["恩诺沙星", "Baytril", "Enrofloxacin"],
+    "category": "药品",
+    "medical_explain": "氟喹诺酮类广谱抗生素，抑制细菌DNA旋转酶，对革兰氏阴性菌和部分阳性菌有效",
+    "plain_explain": "一种较强的抗生素——常用于泌尿道或深层感染",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-doxycycline",
+    "name": "多西环素",
+    "aliases": ["强力霉素", "Doxycycline"],
+    "category": "药品",
+    "medical_explain": "四环素类抗生素，抑制细菌蛋白合成，对支原体、衣原体、立克次体等胞内病原体有特效",
+    "plain_explain": "一种对呼吸道和特殊感染有效的抗生素——喂药后要给猫咪喝水",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-dewormer",
+    "name": "驱虫药",
+    "aliases": ["大宠爱", "爱沃克", "海乐宠", "拜耳驱虫", "体内外驱虫"],
+    "category": "药品",
+    "medical_explain": "体内外抗寄生虫药物，根据有效成分不同分别针对线虫、绦虫、跳蚤、耳螨、心丝虫等寄生虫",
+    "plain_explain": "预防和驱除跳蚤、耳螨、蛔虫等寄生虫的滴剂或口服药——定期使用",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-iv-catheter",
+    "name": "留置针",
+    "aliases": ["静脉留置针", "留置管"],
+    "category": "耗材",
+    "medical_explain": "将柔软导管留置在静脉内，用于静脉输液、给药和采血，避免反复穿刺",
+    "plain_explain": "在血管里留一根软管方便输液和推药——不用每次扎针",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-infusion",
+    "name": "输液费",
+    "aliases": ["输液", "静脉输液", "皮下补液"],
+    "category": "处置",
+    "medical_explain": "通过静脉或皮下途径补充液体和电解质，维持水电解质平衡和循环血量，含穿刺操作和耗材费用",
+    "plain_explain": "给猫狗挂水的人工和耗材费用——脱水或需要静脉给药时必做",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-hospitalization",
+    "name": "住院费",
+    "aliases": ["住院", "留院观察"],
+    "category": "处置",
+    "medical_explain": "提供住院笼位、日常护理、环境维护和基本生命体征监测的费用，不含治疗和药品",
+    "plain_explain": "住院期间笼位和护理的费用——不含检查、药品和治疗的单独收费",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-anesthesia",
+    "name": "麻醉费",
+    "aliases": ["全身麻醉", "吸入麻醉", "基础麻醉", "麻醉监护"],
+    "category": "手术",
+    "medical_explain": "使用麻醉药物使动物失去意识和痛觉，配合气管插管和生命体征监护，确保手术安全",
+    "plain_explain": "让猫狗在手术期间睡着的费用——包含麻醉药和监护设备",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-debridement",
+    "name": "清创缝合",
+    "aliases": ["伤口缝合", "外伤处理", "清创"],
+    "category": "手术",
+    "medical_explain": "清除伤口中的异物和坏死组织，修整创缘后进行缝合，促进伤口一期愈合",
+    "plain_explain": "清洗伤口并缝针——外伤后常规处理",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-crp",
+    "name": "C反应蛋白",
+    "aliases": ["CRP", "炎症指标"],
+    "category": "检查",
+    "medical_explain": "检测血清中C反应蛋白浓度，作为急性期反应蛋白用于评估炎症程度和治疗效果监测",
+    "plain_explain": "抽血查炎症有多严重——比血常规更敏感地反映体内炎症水平",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-saa",
+    "name": "血清淀粉样蛋白A",
+    "aliases": ["SAA", "猫SAA"],
+    "category": "检查",
+    "medical_explain": "检测血清淀粉样蛋白A浓度，为猫的主要急性期反应蛋白，用于早期炎症检测和疗效监测",
+    "plain_explain": "猫特有的炎症指标——比血常规更早反映炎症变化，常和血常规一起查",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-fcov",
+    "name": "猫冠状病毒检测",
+    "aliases": ["FCoV检测", "冠状病毒试纸", "传腹筛查"],
+    "category": "检查",
+    "medical_explain": "检测猫肠道冠状病毒抗体或抗原，用于筛查猫传染性腹膜炎风险和腹泻病因鉴别",
+    "plain_explain": "查猫咪是否携带冠状病毒——腹泻或怀疑传腹时检查",
+    "necessity_hint": "🟡 建议做"
+  }
+]

@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  vetlens:
+    build: .
+    container_name: vetlens-app
+    ports:
+      - "3000:3000"
+    volumes:
+      # 持久化数据库和上传文件
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - VETLENS_DB_PATH=/app/data/vetlens.db
+      # OCR 引擎（可选，需要单独启动 PaddleOCR 容器）
+      - PADDLE_OCR_URL=http://paddleocr:8866
+      # LLM 配置（可选）
+      # - LLM_PROVIDER=ollama
+      # - OLLAMA_BASE_URL=http://ollama:11434
+      # - OLLAMA_MODEL=llama3
+      # 贡献端（可选，数据回收服务）
+      # - VETLENS_CONTRIBUTE_URL=https://api.vetlens.app/api/contribute
+    restart: unless-stopped
+
+  # PaddleOCR 服务（可选，取消注释以启用）
+  # paddleocr:
+  #   image: paddlepaddle/paddleocr:latest
+  #   container_name: vetlens-ocr
+  #   ports:
+  #     - "8866:8866"
+  #   restart: unless-stopped
+  #   profiles:
+  #     - ocr
+
+  # Ollama 服务（可选，取消注释以启用本地 LLM）
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: vetlens-ollama
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   restart: unless-stopped
+  #   profiles:
+  #     - llm
+
+# volumes:
+#   ollama_data:

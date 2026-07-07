@@ -1,0 +1,12 @@
+[
+  {"id": "breed-bsh-hcm", "species": "猫", "breed": "英国短毛猫", "disease": "肥厚性心肌病(HCM)", "risk_level": "高", "screening": "每年1次心脏超声", "screening_cost_range": "¥300-600"},
+  {"id": "breed-bsh-pkd", "species": "猫", "breed": "英国短毛猫", "disease": "多囊肾病(PKD)", "risk_level": "中", "screening": "腹部超声检查肾脏", "screening_cost_range": "¥200-500"},
+  {"id": "breed-mc-hcm", "species": "猫", "breed": "缅因猫", "disease": "肥厚性心肌病(HCM)", "risk_level": "高", "screening": "每年1次心脏超声+基因检测", "screening_cost_range": "¥300-800"},
+  {"id": "breed-raggd-hcm", "species": "猫", "breed": "布偶猫", "disease": "肥厚性心肌病(HCM)", "risk_level": "高", "screening": "每年1次心脏超声", "screening_cost_range": "¥300-600"},
+  {"id": "breed-scf-hcm", "species": "猫", "breed": "苏格兰折耳猫", "disease": "骨软骨发育不良", "risk_level": "高", "screening": "X光检查四肢关节", "screening_cost_range": "¥150-300/部位"},
+  {"id": "breed-scf-hcm2", "species": "猫", "breed": "苏格兰折耳猫", "disease": "肥厚性心肌病(HCM)", "risk_level": "中", "screening": "心脏超声", "screening_cost_range": "¥300-600"},
+  {"id": "breed-pers-pkd", "species": "猫", "breed": "波斯猫", "disease": "多囊肾病(PKD)", "risk_level": "高", "screening": "腹部超声检查肾脏+基因检测", "screening_cost_range": "¥200-500"},
+  {"id": "breed-sia-amyloid", "species": "猫", "breed": "暹罗猫", "disease": "系统性淀粉样变性", "risk_level": "中", "screening": "定期肝肾功能检查", "screening_cost_range": "¥350-800"},
+  {"id": "breed-sia-glaucoma", "species": "猫", "breed": "暹罗猫", "disease": "原发性青光眼", "risk_level": "中", "screening": "每年眼压测量", "screening_cost_range": "¥50-100"},
+  {"id": "breed-dsh-ckd", "species": "猫", "breed": "中华田园猫", "disease": "慢性肾病(CKD)", "risk_level": "低", "screening": "7岁以上每年生化+尿检", "screening_cost_range": "¥400-900"}
+]

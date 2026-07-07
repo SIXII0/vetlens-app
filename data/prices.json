@@ -1,0 +1,47 @@
+[
+  {"id": "price-cbc-bj", "term_id": "term-cbc", "city": "北京", "hospital_type": null, "p10": 60, "p50": 100, "p90": 150, "sample_count": 30, "source": "public"},
+  {"id": "price-cbc-sh", "term_id": "term-cbc", "city": "上海", "hospital_type": null, "p10": 60, "p50": 100, "p90": 150, "sample_count": 30, "source": "public"},
+  {"id": "price-cbc-gz", "term_id": "term-cbc", "city": "广州", "hospital_type": null, "p10": 50, "p50": 90, "p90": 140, "sample_count": 25, "source": "public"},
+  {"id": "price-cbc-sz", "term_id": "term-cbc", "city": "深圳", "hospital_type": null, "p10": 60, "p50": 100, "p90": 150, "sample_count": 25, "source": "public"},
+
+  {"id": "price-bio-bj", "term_id": "term-biochemistry", "city": "北京", "hospital_type": null, "p10": 350, "p50": 550, "p90": 800, "sample_count": 25, "source": "public"},
+  {"id": "price-bio-sh", "term_id": "term-biochemistry", "city": "上海", "hospital_type": null, "p10": 350, "p50": 550, "p90": 800, "sample_count": 25, "source": "public"},
+  {"id": "price-bio-gz", "term_id": "term-biochemistry", "city": "广州", "hospital_type": null, "p10": 300, "p50": 500, "p90": 750, "sample_count": 20, "source": "public"},
+  {"id": "price-bio-sz", "term_id": "term-biochemistry", "city": "深圳", "hospital_type": null, "p10": 350, "p50": 550, "p90": 800, "sample_count": 20, "source": "public"},
+
+  {"id": "price-bg-bj", "term_id": "term-blood-gas", "city": "北京", "hospital_type": null, "p10": 150, "p50": 220, "p90": 300, "sample_count": 15, "source": "public"},
+  {"id": "price-bg-sh", "term_id": "term-blood-gas", "city": "上海", "hospital_type": null, "p10": 150, "p50": 220, "p90": 300, "sample_count": 15, "source": "public"},
+
+  {"id": "price-us-bj", "term_id": "term-ultrasound-abdomen", "city": "北京", "hospital_type": null, "p10": 200, "p50": 350, "p90": 500, "sample_count": 20, "source": "public"},
+  {"id": "price-us-sh", "term_id": "term-ultrasound-abdomen", "city": "上海", "hospital_type": null, "p10": 200, "p50": 350, "p90": 500, "sample_count": 20, "source": "public"},
+
+  {"id": "price-echo-bj", "term_id": "term-echocardiography", "city": "北京", "hospital_type": null, "p10": 300, "p50": 450, "p90": 600, "sample_count": 12, "source": "public"},
+  {"id": "price-echo-sh", "term_id": "term-echocardiography", "city": "上海", "hospital_type": null, "p10": 300, "p50": 450, "p90": 600, "sample_count": 12, "source": "public"},
+
+  {"id": "price-xr-bj", "term_id": "term-xray", "city": "北京", "hospital_type": null, "p10": 150, "p50": 220, "p90": 300, "sample_count": 25, "source": "public"},
+  {"id": "price-xr-sh", "term_id": "term-xray", "city": "上海", "hospital_type": null, "p10": 150, "p50": 220, "p90": 300, "sample_count": 25, "source": "public"},
+
+  {"id": "price-fpv-bj", "term_id": "term-fpv-test", "city": "北京", "hospital_type": null, "p10": 80, "p50": 120, "p90": 150, "sample_count": 20, "source": "public"},
+  {"id": "price-fpv-sh", "term_id": "term-fpv-test", "city": "上海", "hospital_type": null, "p10": 80, "p50": 120, "p90": 150, "sample_count": 20, "source": "public"},
+
+  {"id": "price-pcr-bj", "term_id": "term-pcr", "city": "北京", "hospital_type": null, "p10": 200, "p50": 350, "p90": 500, "sample_count": 18, "source": "public"},
+  {"id": "price-pcr-sh", "term_id": "term-pcr", "city": "上海", "hospital_type": null, "p10": 200, "p50": 350, "p90": 500, "sample_count": 18, "source": "public"},
+
+  {"id": "price-uri-bj", "term_id": "term-urinalysis", "city": "北京", "hospital_type": null, "p10": 50, "p50": 80, "p90": 120, "sample_count": 15, "source": "public"},
+  {"id": "price-uri-sh", "term_id": "term-urinalysis", "city": "上海", "hospital_type": null, "p10": 50, "p50": 80, "p90": 120, "sample_count": 15, "source": "public"},
+
+  {"id": "price-fecal-bj", "term_id": "term-fecal", "city": "北京", "hospital_type": null, "p10": 40, "p50": 60, "p90": 80, "sample_count": 20, "source": "public"},
+  {"id": "price-fecal-sh", "term_id": "term-fecal", "city": "上海", "hospital_type": null, "p10": 40, "p50": 60, "p90": 80, "sample_count": 20, "source": "public"},
+
+  {"id": "price-bp-bj", "term_id": "term-blood-pressure", "city": "北京", "hospital_type": null, "p10": 30, "p50": 50, "p90": 80, "sample_count": 10, "source": "public"},
+  {"id": "price-gaba-bj", "term_id": "term-gabapentin", "city": "北京", "hospital_type": null, "p10": 80, "p50": 120, "p90": 150, "sample_count": 10, "source": "public"},
+  {"id": "price-amo-bj", "term_id": "term-amoxiclav", "city": "北京", "hospital_type": null, "p10": 15, "p50": 22, "p90": 30, "sample_count": 15, "source": "public"},
+  {"id": "price-enro-bj", "term_id": "term-enrofloxacin", "city": "北京", "hospital_type": null, "p10": 20, "p50": 30, "p90": 40, "sample_count": 12, "source": "public"},
+  {"id": "price-doxy-bj", "term_id": "term-doxycycline", "city": "北京", "hospital_type": null, "p10": 8, "p50": 12, "p90": 15, "sample_count": 12, "source": "public"},
+  {"id": "price-deworm-bj", "term_id": "term-dewormer", "city": "北京", "hospital_type": null, "p10": 60, "p50": 100, "p90": 150, "sample_count": 25, "source": "public"},
+  {"id": "price-iv-bj", "term_id": "term-iv-catheter", "city": "北京", "hospital_type": null, "p10": 30, "p50": 45, "p90": 60, "sample_count": 20, "source": "public"},
+  {"id": "price-inf-bj", "term_id": "term-infusion", "city": "北京", "hospital_type": null, "p10": 50, "p50": 100, "p90": 150, "sample_count": 18, "source": "public"},
+  {"id": "price-hosp-bj", "term_id": "term-hospitalization", "city": "北京", "hospital_type": null, "p10": 100, "p50": 200, "p90": 300, "sample_count": 15, "source": "public"},
+  {"id": "price-anesth-bj", "term_id": "term-anesthesia", "city": "北京", "hospital_type": null, "p10": 300, "p50": 600, "p90": 800, "sample_count": 15, "source": "public"},
+  {"id": "price-deb-bj", "term_id": "term-debridement", "city": "北京", "hospital_type": null, "p10": 200, "p50": 400, "p90": 800, "sample_count": 12, "source": "public"}
+]

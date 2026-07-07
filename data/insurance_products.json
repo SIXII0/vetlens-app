@@ -1,0 +1,57 @@
+[
+  {
+    "id": "ins-prod-01",
+    "company": "众安保险",
+    "product_name": "宠物医疗险（基础版）",
+    "waiting_period": 30,
+    "deductible": 300,
+    "reimbursement_rate": 0.6,
+    "annual_limit": 5000,
+    "exclusions": ["体检", "疫苗", "驱虫", "绝育", "美容", "先天性疾病", "遗传病", "牙科治疗"],
+    "coverage_items": ["门诊费", "检查费", "化验费", "药品费", "手术费", "住院费"]
+  },
+  {
+    "id": "ins-prod-02",
+    "company": "众安保险",
+    "product_name": "宠物医疗险（升级版）",
+    "waiting_period": 30,
+    "deductible": 200,
+    "reimbursement_rate": 0.7,
+    "annual_limit": 15000,
+    "exclusions": ["疫苗", "驱虫", "绝育", "美容", "先天性疾病"],
+    "coverage_items": ["门诊费", "检查费", "化验费", "药品费", "手术费", "住院费", "慢性病管理"]
+  },
+  {
+    "id": "ins-prod-03",
+    "company": "平安保险",
+    "product_name": "平安宠物医保",
+    "waiting_period": 30,
+    "deductible": 200,
+    "reimbursement_rate": 0.65,
+    "annual_limit": 10000,
+    "exclusions": ["体检", "疫苗", "驱虫", "绝育", "美容", "先天性疾病", "遗传病"],
+    "coverage_items": ["门诊费", "检查费", "化验费", "药品费", "手术费", "住院费"]
+  },
+  {
+    "id": "ins-prod-04",
+    "company": "泰康在线",
+    "product_name": "微医保·宠物医疗险",
+    "waiting_period": 30,
+    "deductible": 500,
+    "reimbursement_rate": 0.6,
+    "annual_limit": 3000,
+    "exclusions": ["体检", "疫苗", "驱虫", "绝育", "美容", "牙科治疗", "先天性疾病"],
+    "coverage_items": ["门诊费", "检查费", "药品费", "手术费"]
+  },
+  {
+    "id": "ins-prod-05",
+    "company": "大地保险",
+    "product_name": "宠物医疗保险",
+    "waiting_period": 30,
+    "deductible": 300,
+    "reimbursement_rate": 0.7,
+    "annual_limit": 8000,
+    "exclusions": ["体检", "疫苗", "驱虫", "绝育", "美容", "先天性疾病"],
+    "coverage_items": ["门诊费", "检查费", "化验费", "药品费", "手术费", "住院费", "急诊费"]
+  }
+]
