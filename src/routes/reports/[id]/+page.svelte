@@ -49,49 +49,6 @@
     URL.revokeObjectURL(url);
   }
 
-  let pdfGenerating = $state(false);
-  let pdfError = $state<string | null>(null);
-
-  async function generatePdf() {
-    if (!report?.recordId) {
-      pdfError = '该报告未关联就诊记录，无法生成 PDF';
-      return;
-    }
-    pdfGenerating = true;
-    pdfError = null;
-    try {
-      const res = await fetch('/api/report/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recordId: report.recordId,
-          reportType: report.reportType,
-          pdfPolicy: 'required',
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.pdfBase64) {
-        const byteChars = atob(data.pdfBase64);
-        const byteNums = new Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
-        const byteArr = new Uint8Array(byteNums);
-        const blob = new Blob([byteArr], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${report.title || 'report'}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        pdfError = data.error || 'PDF 生成失败';
-      }
-    } catch (e) {
-      pdfError = `请求失败: ${e instanceof Error ? e.message : '未知错误'}`;
-    } finally {
-      pdfGenerating = false;
-    }
-  }
-
 </script>
 
 <div class="max-w-4xl mx-auto space-y-6">
@@ -141,18 +98,10 @@
       {/if}
 
       <!-- 操作栏 -->
-      {#if pdfError}
-        <div class="text-xs text-red-500 mt-2">❌ {pdfError}</div>
-      {/if}
       <div class="flex gap-2 mt-4 pt-3 border-t border-gray-100">
         <button class="btn-secondary text-sm" onclick={downloadMarkdown}>
           📥 下载 MD
         </button>
-        {#if report.recordId}
-          <button class="btn-primary text-sm" onclick={generatePdf} disabled={pdfGenerating}>
-            {pdfGenerating ? '⏳ 生成中...' : '📄 下载 PDF'}
-          </button>
-        {/if}
         {#if report.recordId}
           <a href="/analysis/{report.recordId}" class="btn-ghost text-sm">📋 就诊记录</a>
         {/if}

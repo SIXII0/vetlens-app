@@ -87,11 +87,13 @@ export function markdownToHtml(md: string): string {
       return result;
     })
 
-    // === 引用块 ===
+    // === 引用块（缩进段落，去掉列表符号） ===
     .replace(
       /^> (.+)$/gm,
-      '<blockquote class="border-l-4 border-amber-400 bg-amber-50/70 pl-4 pr-3 py-2.5 my-3 text-[14px] text-amber-800 leading-relaxed rounded-r-lg">$1</blockquote>'
+      '<blockquote class="border-l-[3px] border-gray-300 pl-4 pr-2 py-1.5 my-1.5 text-[14px] text-gray-600 leading-relaxed ml-1">$1</blockquote>'
     )
+    // 合并连续的 blockquote
+    .replace(/<\/blockquote>\n<blockquote class="[^"]*">/g, '\n')
 
     // === 无序列表 ===
     .replace(

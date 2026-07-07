@@ -1,18 +1,18 @@
 """
-skill_bridge.py — VetLens ↔ PetVault Skill 桥接
+skill_bridge.py — 严格调用 pet-vault-skill 原生管线生成 PDF
 
-接收 JSON 输入，直接构造 materials_index 并调用 skill 的报告生成 + LaTeX + PDF 管线。
-严格匹配 pet-vault-skill 内置的 LaTeX 模板格式。
+数据流:
+  JSON input → 构造 materials_index → skill build_report_markdown()
+  → skill markdown_to_latex_body() → Jinja2 模板渲染 → XeLaTeX 编译 → PDF
 
 用法:
-  python skill_bridge.py --input-data input.json --output-dir ./output --report-type bill_explain
+  python skill_bridge.py --input-data input.json --output-dir ./output
 """
 
 import argparse, json, sys
 from pathlib import Path
 from datetime import datetime
 
-# 把 skill 目录加入路径
 SKILL_SCRIPTS = Path(__file__).resolve().parent.parent.parent.parent.parent / ".claude" / "skills" / "pet-vault-skill" / "scripts"
 sys.path.insert(0, str(SKILL_SCRIPTS))
 
@@ -25,307 +25,215 @@ from petvault_core import (
     json_dump,
     init_vault,
 )
+from jinja2 import Environment, BaseLoader
 
 
-def build_materials_index(input_data: dict) -> dict:
-    """从 VetLens 的结构化数据构造 skill 风格的 materials_index"""
-    materials = []
+def build_materials_index(data: dict) -> dict:
+    """从结构化数据构造 skill 格式的 materials_index"""
+    items = data.get("items", [])
+    h = data.get("hospitalName", "")
+    d = data.get("visitDate", "")
+    p = data.get("petName", "待确认")
+    diag = data.get("diagnosis", "")
+    total = data.get("totalAmount", 0)
+    pi = data.get("petInfo") or {}
 
-    items = input_data.get("items", [])
-    hospital_name = input_data.get("hospitalName", "")
-    visit_date = input_data.get("visitDate", "")
-    pet_name = input_data.get("petName", "待确认")
-    diagnosis = input_data.get("diagnosis", "")
-    total_amount = input_data.get("totalAmount", 0)
+    # 按 skill 的 BILL_CATEGORIES 归类
+    check_kw = ['生化','血','检','测','超','cr','x','ct','dr','b超','化验','镜']
+    med_kw = ['药','针','剂','片','丸','胶囊','液','膏','霉素','西林','头孢','沙星','替尼','唑','芬','康','宁','坦','松','平']
+    treat_kw = ['手术','处置','输液','缝合','清创','麻醉','拔牙','冲洗']
+    supply_kw = ['导管','留置针','敷料','耗材','纱布','注射器','棉','手套']
+    service_kw = ['挂号','诊疗','护理','服务','会诊','住院','观察','疫苗','驱虫','绝育','体检','美容']
 
-    # 构造一个"账单"类型的材料
-    # 宠物档案信息
-    pet_info = input_data.get("petInfo") or {}
-    pet_species = pet_info.get("species", "")
-    pet_breed = pet_info.get("breed", "")
-    pet_gender = pet_info.get("gender", "")
-    pet_birth = pet_info.get("birthDate", "")
-    pet_weight = pet_info.get("weightKg", "")
+    def classify(name: str) -> str:
+        lo = name.lower()
+        if any(k in lo for k in check_kw): return "检查"
+        if any(k in lo for k in med_kw): return "药品"
+        if any(k in lo for k in treat_kw): return "治疗"
+        if any(k in lo for k in supply_kw): return "耗材"
+        if any(k in lo for k in service_kw): return "服务"
+        return "其他"
 
-    # 将项目按类别分组（匹配 skill 的 BILL_CATEGORIES）
-    check_items = []   # 检查类
-    med_items = []     # 药品类
-    treat_items = []   # 治疗类
-    supply_items = []  # 耗材类
-    service_items = [] # 服务类
-    other_items = []   # 其他
+    lines = [f"宠物医院账单", f"医院: {h}", f"日期: {d}", f"宠物: {p}"]
+    if pi.get("species"): lines.append(f"种类: {pi['species']}")
+    if pi.get("breed"): lines.append(f"品种: {pi['breed']}")
+    if pi.get("gender"): lines.append(f"性别: {pi['gender']}")
+    if pi.get("birthDate"): lines.append(f"出生日期: {pi['birthDate']}")
+    if pi.get("weightKg"): lines.append(f"体重: {pi['weightKg']} kg")
+    if diag: lines.append(f"诊断: {diag}")
 
-    for item in items:
-        name = item['name']
-        amount = item['amount']
-        lower = name.lower()
-        if any(kw in lower for kw in ['血','检','测','超','cr','x','ct','dr','b超','化验','镜']):
-            check_items.append(item)
-        elif any(kw in lower for kw in ['药','针','剂','片','丸','胶囊','液','膏','霉素','西林','头孢','沙星','替尼','唑','芬','康','宁','坦','松','平']):
-            med_items.append(item)
-        elif any(kw in lower for kw in ['手术','处置','输液','缝合','清创','麻醉','拔牙','冲洗']):
-            treat_items.append(item)
-        elif any(kw in lower for kw in ['导管','留置针','敷料','耗材','纱布','注射器','棉','手套']):
-            supply_items.append(item)
-        elif any(kw in lower for kw in ['挂号','诊疗','护理','服务','会诊','住院','观察']):
-            service_items.append(item)
-        elif any(kw in lower for kw in ['疫苗','驱虫','绝育','体检','美容','洗澡','剃毛','剪指甲']):
-            service_items.append(item)  # 预防/非医疗性服务
-        else:
-            other_items.append(item)
+    cats: dict[str, list] = {}
+    for it in items:
+        c = classify(it["name"])
+        cats.setdefault(c, []).append(it)
+    for c in ["检查","药品","治疗","耗材","服务","其他"]:
+        if c in cats:
+            lines.append(f"\n{c}:")
+            for it in cats[c]:
+                lines.append(f"  {it['name']}  ¥{it['amount']:.2f}")
+    lines.append(f"\n合计 ¥{total:.2f}")
 
-    text_lines = [
-        f"宠物医院账单",
-        f"医院: {hospital_name}",
-        f"日期: {visit_date}",
-        f"宠物: {pet_name}",
-    ]
-    if pet_species:
-        text_lines.append(f"种类: {pet_species}")
-    if pet_breed:
-        text_lines.append(f"品种: {pet_breed}")
-    if pet_gender:
-        text_lines.append(f"性别: {pet_gender}")
-    if pet_birth:
-        text_lines.append(f"出生日期: {pet_birth}")
-    if pet_weight:
-        text_lines.append(f"体重: {pet_weight} kg")
-    if diagnosis:
-        text_lines.append(f"诊断: {diagnosis}")
-
-    # 按类别输出费用明细
-    def write_category(title, cat_items):
-        if not cat_items:
-            return
-        text_lines.append(f"\n{title}:")
-        for it in cat_items:
-            text_lines.append(f"  {it['name']}  ¥{it['amount']:.2f}")
-
-    write_category("检查", check_items)
-    write_category("药品", med_items)
-    write_category("治疗", treat_items)
-    write_category("耗材", supply_items)
-    write_category("服务", service_items)
-    write_category("其他", other_items)
-
-    text_lines.append(f"\n合计 ¥{total_amount:.2f}")
-    # 附上 Agent 分析结果（如果有的话，丰富报告内容）
-    agent_analysis = input_data.get("analysisText") or ""
-    if agent_analysis and len(agent_analysis) > 50:
-        text_lines.append(f"\n--- AI 分析参考 ---\n{agent_analysis[:3000]}")
-
-    text = "\n".join(text_lines)
-
-    # 主材料：bill
-    materials.append({
-        "id": "mat_001_vetlens",
-        "type": "bill",
-        "pet_name": pet_name if pet_name != "待确认" else None,
-        "clinic": hospital_name or None,
-        "date": visit_date or None,
-        "source_file": "vetlens_bill_data.md",
+    text = "\n".join(lines)
+    materials = [{
+        "id": "mat_001", "type": "bill",
+        "pet_name": p if p != "待确认" else None,
+        "clinic": h or None, "date": d or None,
+        "source_file": "bill_data.md",
         "raw_path": "", "cleaned_markdown_path": "",
-        "confidence": 0.95, "status": "extracted",
-        "text": text,
-    })
+        "confidence": 0.95, "status": "extracted", "text": text,
+    }]
 
-    # 注：不额外创建 lab_report / prescription 材料，避免 skill 重复计数
-    # 所有项目已在 bill 材料中按类别归类
-
-    # 如果有宠物档案信息，添加为 pet_profile 材料
-    if pet_species or pet_breed:
-        profile_text = f"宠物名称: {pet_name}\n"
-        if pet_species: profile_text += f"种类: {pet_species}\n"
-        if pet_breed: profile_text += f"品种: {pet_breed}\n"
-        if pet_gender: profile_text += f"性别: {pet_gender}\n"
-        if pet_birth: profile_text += f"出生日期: {pet_birth}\n"
-        if pet_weight: profile_text += f"体重: {pet_weight} kg\n"
+    # 宠物档案
+    if pi.get("species") or pi.get("breed"):
+        pt = f"宠物名称: {p}\n"
+        if pi.get("species"): pt += f"种类: {pi['species']}\n"
+        if pi.get("breed"): pt += f"品种: {pi['breed']}\n"
+        if pi.get("gender"): pt += f"性别: {pi['gender']}\n"
+        if pi.get("birthDate"): pt += f"出生日期: {pi['birthDate']}\n"
+        if pi.get("weightKg"): pt += f"体重: {pi['weightKg']} kg\n"
         materials.append({
-            "id": "mat_000_vetlens_pet",
-            "type": "pet_profile",
-            "pet_name": pet_name if pet_name != "待确认" else None,
-            "clinic": None,
-            "date": None,
-            "source_file": "vetlens_pet_profile.md",
-            "raw_path": "",
-            "cleaned_markdown_path": "",
-            "confidence": 0.99,
-            "status": "extracted",
-            "text": profile_text,
+            "id": "mat_000", "type": "pet_profile",
+            "pet_name": p if p != "待确认" else None,
+            "clinic": None, "date": None,
+            "source_file": "pet_profile.md",
+            "raw_path": "", "cleaned_markdown_path": "",
+            "confidence": 0.99, "status": "extracted", "text": pt,
         })
 
-    # 如果有诊断，添加一个"医疗报告"材料
-    if diagnosis:
-        med_text = f"诊断: {diagnosis}\n日期: {visit_date}\n医院: {hospital_name}\n宠物: {pet_name}"
-        materials.append({
-            "id": "mat_002_vetlens",
-            "type": "medical_report",
-            "pet_name": pet_name if pet_name != "待确认" else None,
-            "clinic": hospital_name or None,
-            "date": visit_date or None,
-            "source_file": "vetlens_diagnosis.md",
-            "raw_path": "",
-            "cleaned_markdown_path": "",
-            "confidence": 0.90,
-            "status": "extracted",
-            "text": med_text,
-        })
+    return {"materials": materials, "created_at": datetime.now().isoformat(timespec="seconds")}
 
-    return {
-        "materials": materials,
-        "created_at": datetime.now().isoformat(timespec="seconds"),
+
+def _sanitize_markdown(md: str) -> str:
+    """预处理 Agent 生成的 Markdown，修复 LaTeX 不兼容格式"""
+    import re
+    # 1. 移除 `> ` 引用标记内嵌的 `\n`（LaTeX 中会断开）
+    # 2. 将 Markdown 表格转为缩进列表
+    lines = md.split('\n')
+    out = []
+    in_table = False
+    for line in lines:
+        stripped = line.strip()
+        # 检测表格行
+        if stripped.startswith('|') and '|' in stripped[1:]:
+            if '---' in stripped:
+                in_table = True
+                continue
+            if in_table:
+                # 表格数据行 → 缩进列表
+                cells = [c.strip() for c in stripped.split('|') if c.strip()]
+                if len(cells) >= 2:
+                    out.append(f"- **{cells[0]}**: {', '.join(cells[1:])}")
+                continue
+        else:
+            in_table = False
+        out.append(line)
+    # 3. 移除行内 `\n`（LaTeX 中会被识别为换行命令）
+    result = '\n'.join(out)
+    result = result.replace('\\\n', '\n').replace('\\\n', '\n')
+    # 4. 修复编号列表中的 **粗体** 数字标记
+    result = re.sub(r'^(\d+)\.\s*\*\*(.+?)\*\*', r'\1. \2', result, flags=re.MULTILINE)
+    return result
+
+
+def render_tex(report_type: str, pet_name: str, body_md: str) -> str:
+    """使用 skill 内置 LaTeX 模板渲染"""
+    SKILL_DIR = SKILL_SCRIPTS.parent
+    tmpl = SKILL_DIR / "templates"
+    styles = (tmpl / "styles.tex.j2").read_text(encoding="utf-8")
+
+    name_map = {
+        "general": "report_general.tex.j2", "medical_summary": "report_medical_summary.tex.j2",
+        "bill_explain": "report_bill_explain.tex.j2", "claim_check": "report_claim_check.tex.j2",
+        "timeline": "report_timeline.tex.j2", "chronic_review": "report_chronic_review.tex.j2",
+        "clinic_client_summary": "report_clinic_client_summary.tex.j2",
     }
+    tpl_path = tmpl / name_map.get(report_type, "report_general.tex.j2")
+    if not tpl_path.exists():
+        tpl_path = tmpl / "report_general.tex.j2"
+
+    tpl_src = tpl_path.read_text(encoding="utf-8")
+    latex_body = markdown_to_latex_body(body_md)
+    return Environment(loader=BaseLoader()).from_string(tpl_src).render(
+        styles=styles, pet_name=pet_name, body=latex_body)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="VetLens ↔ PetVault Skill Bridge")
-    parser.add_argument("--input-data", required=True, type=Path, help="JSON file with structured bill data")
-    parser.add_argument("--output-dir", required=True, type=Path, help="Output directory for report artifacts")
-    parser.add_argument("--vault-dir", required=False, type=Path, default=None, help="Vault directory (optional)")
-    parser.add_argument("--report-type", default="auto", help="Report type")
-    parser.add_argument("--pet-name", default=None, help="Pet name override")
-    parser.add_argument("--pdf-policy", default="required", choices=["attempt", "required", "skip"])
-    parser.add_argument("--markdown", default=None, type=Path, help="预生成的 Markdown 文件路径（跳过 build_report_markdown）")
-    args = parser.parse_args()
+    p = argparse.ArgumentParser(description="VetLens PetVault Skill Bridge")
+    p.add_argument("--input-data", required=True, type=Path)
+    p.add_argument("--output-dir", required=True, type=Path)
+    p.add_argument("--report-type", default="auto")
+    p.add_argument("--pet-name", default=None)
+    p.add_argument("--pdf-policy", default="required", choices=["attempt","required","skip"])
+    p.add_argument("--markdown", default=None, type=Path, help="Agent 预生成的 Markdown（跳过 build_report_markdown）")
+    args = p.parse_args()
 
-    # 读取输入
-    input_data = json.loads(args.input_data.read_text(encoding="utf-8"))
+    data = json.loads(args.input_data.read_text(encoding="utf-8"))
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 初始化 vault（可选）
-    vault_dir = args.vault_dir or (args.output_dir / "vault")
-    init_vault(vault_dir)
-
-    # 构造 materials_index
-    materials_index = build_materials_index(input_data)
-
     # 选择报告类型
-    report_type = args.report_type
-    if report_type == "auto":
-        req = input_data.get("requestText", "").lower()
-        if any(kw in req for kw in ["账单","费用","发票","bill","invoice"]):
-            report_type = "bill_explain"
-        elif any(kw in req for kw in ["理赔","保险","claim","insurance"]):
-            report_type = "claim_check"
-        elif any(kw in req for kw in ["转院","时间线","timeline","referral"]):
-            report_type = "timeline"
-        elif any(kw in req for kw in ["慢病","慢性","chronic"]):
-            report_type = "chronic_review"
-        elif any(kw in req for kw in ["检查报告","化验","lab","medical"]):
-            report_type = "medical_summary"
-        else:
-            report_type = "general"
+    rt = args.report_type
+    if rt == "auto":
+        req = data.get("requestText", "").lower()
+        if any(k in req for k in ["账单","费用","发票","bill"]): rt = "bill_explain"
+        elif any(k in req for k in ["理赔","保险","claim"]): rt = "claim_check"
+        elif any(k in req for k in ["转院","时间线","timeline"]): rt = "timeline"
+        elif any(k in req for k in ["慢病","慢性","chronic"]): rt = "chronic_review"
+        elif any(k in req for k in ["检查报告","化验","lab"]): rt = "medical_summary"
+        else: rt = "general"
 
-    pet_name = args.pet_name or input_data.get("petName") or UNKNOWN_TEXT
-
-    # 1. 生成/加载 Markdown 报告
+    pn = args.pet_name or data.get("petName") or UNKNOWN_TEXT
+    vault_dir = args.output_dir / "vault"
+    init_vault(vault_dir)
+    mi = build_materials_index(data)
     warnings = []
+
+    # Markdown: Agent 预生成优先，否则用 skill 内置
     if args.markdown and args.markdown.exists():
-        # 使用外部预生成的 Markdown（来自 Agent 管线或 TypeScript reporter）
         report_md = args.markdown.read_text(encoding="utf-8")
-        print(f"[skill_bridge] 使用预生成 Markdown ({len(report_md)} 字符)")
+        # 预处理：修复 Agent 输出中的 LaTeX 不兼容格式
+        report_md = _sanitize_markdown(report_md)
+        print(f"[skill_bridge] 使用 Agent 预生成 Markdown ({len(report_md)} 字符)")
     else:
-        # 使用 skill 内置的 build_report_markdown
-        report_md, warnings = build_report_markdown(report_type, pet_name, materials_index)
-        print(f"[skill_bridge] 使用 skill 内置 Markdown 生成")
+        report_md, warnings = build_report_markdown(rt, pn, mi)
+        print(f"[skill_bridge] 使用 skill build_report_markdown")
 
     (args.output_dir / "report.md").write_text(report_md, encoding="utf-8")
 
-    # 2. 生成 LaTeX（使用 skill 内置模板）
-    report_tex = _render_tex(report_type, pet_name, report_md)
+    # LaTeX + PDF
+    report_tex = render_tex(rt, pn, report_md)
     (args.output_dir / "report.tex").write_text(report_tex, encoding="utf-8")
 
-    # 3. 编译 PDF
-    pdf_policy = args.pdf_policy
-    skip_compile = pdf_policy == "skip"
-    pdf_ok, pdf_log = compile_pdf(
-        args.output_dir / "report.tex",
-        args.output_dir,
-        skip=skip_compile,
-    )
+    skip = args.pdf_policy == "skip"
+    pdf_ok, pdf_log = compile_pdf(args.output_dir / "report.tex", args.output_dir, skip=skip)
 
-    # 4. 生成 manifest
-    manifest = {
-        "report_id": "vetlens_br_001",
-        "report_type": report_type,
-        "title": REPORT_TITLES.get(report_type, REPORT_TITLES["general"]),
-        "pet_name": pet_name,
-        "generated_at": datetime.now().isoformat(),
-        "material_count": len(materials_index.get("materials", [])),
-        "routing_reason": f"vetlens-bridge, type={report_type}",
-    }
-    json_dump(args.output_dir / "manifest.json", manifest)
-
-    # 5. 生成 QA 结果
-    qa = {
-        "passed": pdf_ok or skip_compile,
-        "checks": [
-            {"rule": "report.md exists", "passed": (args.output_dir / "report.md").exists(), "detail": ""},
-            {"rule": "report.tex exists", "passed": (args.output_dir / "report.tex").exists(), "detail": ""},
-            {"rule": "report.pdf exists", "passed": (args.output_dir / "report.pdf").exists() if not skip_compile else True, "detail": ""},
-            {"rule": "manifest exists", "passed": (args.output_dir / "manifest.json").exists(), "detail": ""},
-        ],
-        "warnings": warnings,
-    }
-    if not pdf_ok and not skip_compile:
-        qa["warnings"].append(f"PDF compile issue: {pdf_log[:200]}")
+    # Manifest + QA
+    json_dump(args.output_dir / "manifest.json", {
+        "report_id": "vetlens_001", "report_type": rt,
+        "title": REPORT_TITLES.get(rt, "报告"), "pet_name": pn,
+        "generated_at": datetime.now().isoformat(), "material_count": len(mi.get("materials",[])),
+    })
+    qa = {"passed": pdf_ok or skip, "checks": [
+        {"rule":"report.md","passed":(args.output_dir/"report.md").exists(),"detail":""},
+        {"rule":"report.tex","passed":(args.output_dir/"report.tex").exists(),"detail":""},
+        {"rule":"report.pdf","passed":(args.output_dir/"report.pdf").exists() if not skip else True,"detail":""},
+    ], "warnings": warnings}
+    if not pdf_ok and not skip:
+        qa["warnings"].append(f"PDF compile: {pdf_log[:200]}")
     json_dump(args.output_dir / "qa_result.json", qa)
-
-    # 6. 写 build.log
     (args.output_dir / "build.log").write_text(pdf_log, encoding="utf-8")
 
-    # 7. 输出摘要
-    result = {
+    print(json.dumps({
         "success": (args.output_dir / "report.md").exists(),
         "pdf_compiled": pdf_ok,
-        "report_type": report_type,
+        "report_type": rt,
         "output_dir": str(args.output_dir),
         "files": {
             "markdown": str(args.output_dir / "report.md"),
             "tex": str(args.output_dir / "report.tex"),
             "pdf": str(args.output_dir / "report.pdf") if (args.output_dir / "report.pdf").exists() else None,
-            "manifest": str(args.output_dir / "manifest.json"),
-            "qa_result": str(args.output_dir / "qa_result.json"),
-            "build_log": str(args.output_dir / "build.log"),
         },
         "warnings": warnings,
-    }
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-
-
-def _render_tex(report_type: str, pet_name: str, body_md: str) -> str:
-    """使用 pet-vault-skill 内置 LaTeX 模板渲染 report.tex"""
-    from jinja2 import Environment, BaseLoader
-
-    SKILL_DIR = SKILL_SCRIPTS.parent
-    templates_dir = SKILL_DIR / "templates"
-
-    styles_path = templates_dir / "styles.tex.j2"
-    template_map = {
-        "general": "report_general.tex.j2",
-        "medical_summary": "report_medical_summary.tex.j2",
-        "bill_explain": "report_bill_explain.tex.j2",
-        "claim_check": "report_claim_check.tex.j2",
-        "timeline": "report_timeline.tex.j2",
-        "chronic_review": "report_chronic_review.tex.j2",
-        "clinic_client_summary": "report_clinic_client_summary.tex.j2",
-    }
-
-    template_name = template_map.get(report_type, "report_general.tex.j2")
-    template_path = templates_dir / template_name
-    if not template_path.exists():
-        template_path = templates_dir / "report_general.tex.j2"
-
-    styles = styles_path.read_text(encoding="utf-8") if styles_path.exists() else ""
-    template_src = template_path.read_text(encoding="utf-8")
-
-    # 将 Markdown 转为 LaTeX body（skill 内置函数）
-    latex_body = markdown_to_latex_body(body_md)
-
-    # Jinja2 渲染
-    env = Environment(loader=BaseLoader())
-    tpl = env.from_string(template_src)
-    return tpl.render(styles=styles, pet_name=pet_name, body=latex_body)
+    }, ensure_ascii=False))
 
 
 if __name__ == "__main__":

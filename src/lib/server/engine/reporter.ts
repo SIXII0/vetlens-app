@@ -156,73 +156,70 @@ export function composeReport(input: ReportInput): ReportResult {
 
   const S: string[] = [];
 
-  // ── 标题区 ──
+  // ── 标题 + 基本信息（紧凑一行） ──
   S.push(`# ${REPORT_TITLES[reportType]}`);
   S.push('');
-  S.push(`**宠物**: ${pet}  |  **日期**: ${date}`);
-  if (input.hospitalName) S.push(`**就诊医院**: ${input.hospitalName}`);
-  if (input.city) S.push(`**所在城市**: ${input.city}`);
+  const metaParts: string[] = [];
+  if (input.hospitalName) metaParts.push(`**${input.hospitalName}**`);
+  metaParts.push(date);
+  if (input.city) metaParts.push(input.city);
+  S.push(metaParts.join('  |  '));
   S.push('');
 
-  // ── 来源列表（source list first — skill 要求） ──
-  S.push('## 使用材料');
+  // 宠物档案（单行缩进）
+  if (input.petInfo) {
+    const pi = input.petInfo;
+    const piParts: string[] = [];
+    piParts.push(`🐾 ${pet}`);
+    if (pi.species) piParts.push(pi.species);
+    if (pi.breed) piParts.push(pi.breed);
+    if (pi.gender) piParts.push(pi.gender);
+    if (pi.birthDate) piParts.push(`🎂 ${pi.birthDate}`);
+    if (pi.weightKg) piParts.push(`⚖️ ${pi.weightKg}kg`);
+    S.push(`${piParts.join(' · ')}`);
+  } else {
+    S.push(`🐾 ${pet}`);
+  }
+  S.push('');
+
+  // ── 使用材料 + 事实（合并，减少重复） ──
+  S.push('## 事实与材料');
   S.push('');
   if (items.length) {
-    S.push(`本报告基于就诊记录中的 ${items.length} 项费用数据进行分析。`);
+    S.push(`本次就诊共 **${items.length}** 项收费，合计 **${fmt(total)}**。`);
+    if (input.visitReason) S.push(`就诊原因：${input.visitReason}`);
+    if (input.diagnosis) S.push(`诊断结果：${input.diagnosis}`);
     S.push('');
-    S.push('| 序号 | 项目名称 | 金额 | 类别 | 知识库状态 |');
-    S.push('|------|---------|------|------|-----------|');
-    for (let i=0;i<items.length;i++) {
-      const it = items[i];
-      S.push(`| ${i+1} | ${it.rawName} | ${fmt(it.amount)} | ${it.category||'其他'} | ${it.isUnknown?'⚠️ 未收录':'✅ 已匹配'} |`);
+    S.push('| 项目 | 金额 | 类别 | 匹配 |');
+    S.push('|------|------|------|------|');
+    for (const it of items) {
+      S.push(`| ${it.rawName} | ${fmt(it.amount)} | ${it.category||'其他'} | ${it.isUnknown?'⚠️':'✅'} |`);
     }
-    if (input.diagnosis) S.push(`| — | 诊断: ${input.diagnosis} | — | — | — |`);
   } else {
     S.push('本次分析未包含具体的费用项目记录。');
   }
   S.push('');
 
-  // ── 事实（直接提取，不加解读） ──
-  S.push('## 事实');
-  S.push('');
-  S.push('以下信息从提供的材料中直接提取，未经加工解读：');
-  S.push('');
-  S.push(`- **就诊日期**: ${date}`);
-  if (input.hospitalName) S.push(`- **就诊医院**: ${input.hospitalName}`);
-  if (input.city) S.push(`- **所在城市**: ${input.city}`);
-  if (input.visitReason) S.push(`- **就诊原因**: ${input.visitReason}`);
-  if (input.diagnosis) S.push(`- **诊断结果**: ${input.diagnosis}`);
-  if (total>0) S.push(`- **总费用**: ${fmt(total)}（${items.length}个项目）`);
-  if (input.petInfo) {
-    const pi = input.petInfo;
-    if (pi.species) S.push(`- **宠物种类**: ${pi.species}${pi.breed?`（${pi.breed}）`:''}`);
-    if (pi.gender) S.push(`- **性别**: ${pi.gender}`);
-    if (pi.birthDate) S.push(`- **出生日期**: ${pi.birthDate}`);
-    if (pi.weightKg) S.push(`- **体重**: ${pi.weightKg} kg`);
-  }
-  S.push('');
-
-  // ── 整理结果（结论优先，再放细节 — skill 要求） ──
+  // ── 整理结果 ──
   S.push('## 整理结果');
   S.push('');
 
-  // 先放结论摘要
-  S.push('### 概要');
-  S.push('');
+  // 概要：不带列表符号，用段落
   if (input.summary) {
-    // 提取关键指标
     const matched = input.summary.matchedItems, unknown = input.summary.unknownItems;
     const high = input.summary.priceHighItems, warn = input.summary.priceWarningItems;
-    S.push(`- ${input.summary.overallAssessment}`);
-    S.push(`- 知识库匹配: ${matched}/${items.length} 项${unknown>0?`，${unknown} 项未识别`:''}`);
-    if (high>0||warn>0) S.push(`- 价格提示: ${high} 项偏高，${warn} 项略高`);
-    else S.push('- 价格均在参考区间内');
-    S.push(`- 总费用: ${fmt(total)}`);
+    S.push(`${input.summary.overallAssessment}`);
+    S.push('');
+    const stats: string[] = [];
+    stats.push(`知识库匹配 ${matched}/${items.length} 项`);
+    if (unknown>0) stats.push(`${unknown} 项待确认`);
+    if (high>0) stats.push(`${high} 项价格偏高`);
+    if (warn>0) stats.push(`${warn} 项价格略高`);
+    S.push(stats.join(' · '));
   } else {
     S.push(`本次就诊共 ${items.length} 个项目，总费用 ${fmt(total)}。`);
     const m = items.filter(i=>!i.isUnknown).length;
-    const u = items.filter(i=>i.isUnknown).length;
-    if (u>0) S.push(`${m} 项已匹配知识库，${u} 项未识别。`);
+    if (m < items.length) S.push(`${m} 项已匹配知识库，${items.length-m} 项待确认。`);
   }
   S.push('');
 
@@ -236,17 +233,23 @@ export function composeReport(input: ReportInput): ReportResult {
     S.push('');
     for (let i=0;i<items.length;i++) {
       const it = items[i];
-      S.push(`#### ${i+1}. ${it.rawName} — ${fmt(it.amount)}`);
+      S.push(`**${i+1}. ${it.rawName}** — ${fmt(it.amount)}`);
       S.push('');
-      if (it.category) S.push(`- **类别**: ${it.category}`);
-      if (it.necessity) S.push(`- **必要性**: ${it.necessity}`);
+      const detail: string[] = [];
+      if (it.category) detail.push(`类别：${it.category}`);
+      if (it.necessity) detail.push(`必要性：${it.necessity}`);
       if (it.priceAssessment) {
-        S.push(`- **价格评估**: ${it.priceAssessment.level}`);
-        S.push(`  - 参考区间: ${fmt(it.priceAssessment.p10)} ~ ${fmt(it.priceAssessment.p90)}`);
-        if (it.priceAssessment.message) S.push(`  - ${it.priceAssessment.message}`);
+        detail.push(`价格：${it.priceAssessment.level}（参考 ${fmt(it.priceAssessment.p10)}~${fmt(it.priceAssessment.p90)}）`);
       }
-      if (it.explanation) S.push(`- **解释**: ${it.explanation}`);
-      if (it.isUnknown) S.push(`- ⚠️ 该项目在知识库中未收录，以上解释为推断。建议向兽医确认其临床必要性。`);
+      if (detail.length) {
+        S.push(`${detail.join(' · ')}`);
+      }
+      if (it.explanation) {
+        S.push(`${it.explanation}`);
+      }
+      if (it.isUnknown) {
+        S.push(`⚠️ 该项目在知识库中未收录，解释为推断。建议向兽医确认。`);
+      }
       S.push('');
     }
   }
@@ -256,22 +259,31 @@ export function composeReport(input: ReportInput): ReportResult {
   S.push('');
   const uncertain = items.filter(i=>i.isUnknown);
   if (uncertain.length) {
-    S.push(`以下 ${uncertain.length} 个项目未能从知识库中匹配：`);
+    S.push(`以下 ${uncertain.length} 个项目暂未在知识库中匹配，建议向兽医核实：`);
     S.push('');
-    for (const it of uncertain) S.push(`- **${it.rawName}** (${fmt(it.amount)})：${it.unknownReason||'知识库中未收录'}`);
-    S.push('');
+    for (const it of uncertain) {
+      S.push(`**${it.rawName}** (${fmt(it.amount)})`);
+      S.push(`${it.unknownReason||'知识库中未收录'}`);
+      S.push('');
+    }
   }
-  if (!input.hospitalName) S.push('- 就诊医院名称未提供');
-  if (!input.diagnosis) S.push('- 诊断结果未提供（如有诊断书或病历，建议补充）');
-  if (!input.petName) S.push('- 宠物名称未提供');
-  if (!uncertain.length && input.hospitalName && input.petName) S.push('本次分析中所有已识别项目均已在知识库中找到匹配，基本信息完整。');
+  if (!input.hospitalName) S.push('> 就诊医院名称未提供');
+  if (!input.diagnosis) S.push('> 诊断结果未提供（如有诊断书或病历，建议补充以获取更完整分析）');
+  if (!input.petName) S.push('> 宠物名称未提供');
+  if (!uncertain.length && input.hospitalName && input.petName) {
+    S.push('本次分析所有已识别项目均在知识库中找到匹配，基本信息完整。');
+  }
   S.push('');
 
   // ── 后续建议 ──
   S.push('## 后续建议');
   S.push('');
-  S.push(...buildNextActions(reportType, items, input));
-  S.push('');
+  const actions = buildNextActions(reportType, items, input);
+  for (const a of actions) {
+    const cleaned = a.replace(/^\d+\.\s*\*\*/, '').replace(/\*\*$/, '').replace(/^(\d+\.\s*)/, '');
+    S.push(`${cleaned}`);
+    S.push('');
+  }
 
   // ── 免责声明 ──
   S.push('---');
@@ -281,8 +293,8 @@ export function composeReport(input: ReportInput): ReportResult {
   } else {
     S.push(MEDICAL_DISCLAIMER);
   }
-  if (reportType==='claim_check') { S.push(''); S.push(INSURANCE_DISCLAIMER); }
-  if (reportType==='bill_explain') { S.push(''); S.push(BILLING_BOUNDARY); }
+  if (reportType==='claim_check') { S.push(''); S.push(''); S.push(INSURANCE_DISCLAIMER); }
+  if (reportType==='bill_explain') { S.push(''); S.push(''); S.push(BILLING_BOUNDARY); }
   S.push('');
 
   const md = S.join('\n');
@@ -625,46 +637,46 @@ function pet(input: ReportInput): string {
 //  后续建议（按类型）
 // ================================================================
 
-function buildNextActions(type: ReportType, items: AnalyzedItem[], input: ReportInput): string[] {
+function buildNextActions(type: ReportType, _items: AnalyzedItem[], _input: ReportInput): string[] {
   switch (type) {
     case 'bill_explain': return [
-      '1. **核实未识别项目**：标注为"知识库未收录"的项目，建议向兽医确认临床必要性',
-      '2. **保留原始票据**：妥善保管发票和费用清单原件，以备保险理赔使用',
-      '3. **价格参考**：可对比同城同级别医院的公开价格，了解收费水平',
+      '核实未识别项目的临床必要性，向兽医确认',
+      '保留发票和费用清单原件，以备保险理赔',
+      '可对比同城同级别医院公开价格了解收费水平',
     ];
     case 'claim_check': return [
-      '1. **补齐缺失材料**：根据上方"缺少的材料"清单逐项准备',
-      '2. **确认时效**：在保单有效期内提交理赔申请',
-      '3. **原件要求**：所有材料需提供原件或加盖医院公章的复印件',
-      '4. **先咨询再提交**：建议提交前先咨询保险公司客服确认材料完整性',
+      '根据"缺少的材料"清单逐项准备理赔材料',
+      '确认在保单有效期内提交理赔申请',
+      '所有材料提供原件或加盖医院公章的复印件',
+      '提交前先咨询保险公司客服确认材料完整性',
     ];
     case 'timeline': return [
-      '1. **补充历史记录**：导入此前在其他医院的就诊记录，完善完整时间线',
-      '2. **整理资料包**：将检查报告、处方、账单按时间顺序归档',
-      '3. **标注关键节点**：标注手术日期、疫苗接种时间、慢性病确诊日期等',
+      '导入此前在其他医院的就诊记录，完善时间线',
+      '将检查报告、处方、账单按时间顺序归档',
+      '标注手术日期、疫苗接种时间、确诊日期等关键节点',
     ];
     case 'medical_summary': return [
-      '1. **记录观察**：记录宠物的饮食、排泄、精神状态等日常变化',
-      '2. **按时复查**：遵医嘱按时复查，不要自行调整用药或停药',
-      '3. **准备问题清单**：复诊前列出想问兽医的问题',
-      '4. **紧急情况**：如出现呼吸困难、持续呕吐、抽搐等紧急症状，立即就医',
+      '记录宠物的饮食、排泄、精神状态等日常变化',
+      '遵医嘱按时复查，不自行调整用药或停药',
+      '复诊前列出想问兽医的问题清单',
+      '出现呼吸困难、持续呕吐、抽搐等症状立即就医',
     ];
     case 'chronic_review': return [
-      '1. **用药日志**：记录每日用药时间、剂量和宠物反应',
-      '2. **定期监测**：按医嘱进行血常规、生化等定期检查',
-      '3. **饮食管理**：严格遵守处方粮或特殊饮食要求',
-      '4. **应急准备**：保存最近的24小时急诊医院地址和电话',
-      '5. **月度复盘**：每月整理费用和检查结果，评估治疗效果',
+      '记录每日用药时间、剂量和宠物反应',
+      '按医嘱进行血常规、生化等定期检查',
+      '严格遵守处方粮或特殊饮食要求',
+      '保存最近24小时急诊医院的地址和电话',
+      '每月整理费用和检查结果，评估治疗效果',
     ];
     case 'clinic_client_summary': return [
-      '1. **兽医审核**：本文须经执业兽医审核确认后方可作为正式沟通材料',
-      '2. **补充临床信息**：根据实际诊疗情况补充关键发现和复查建议',
-      '3. **客户沟通**：以本文为基础与客户沟通，注意使用通俗易懂的语言',
+      '本文须经执业兽医审核确认后方可作为正式沟通材料',
+      '根据实际诊疗情况补充关键发现和复查建议',
+      '与客户沟通时使用通俗易懂的语言',
     ];
     default: return [
-      '1. **完善档案**：补充宠物品种、年龄、性别等信息可提高后续分析精准度',
-      '2. **定期归档**：每次就诊后及时上传资料并生成报告',
-      '3. **保险规划**：如有宠物保险，可上传保单进行理赔预检',
+      '补充宠物品种、年龄、性别等信息可提高分析精准度',
+      '每次就诊后及时上传资料并生成报告归档',
+      '如有宠物保险，可上传保单进行理赔预检',
     ];
   }
 }
