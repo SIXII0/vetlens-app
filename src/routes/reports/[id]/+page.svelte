@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import { formatDate } from '$lib/utils/format';
   import { markdownToHtml } from '$lib/utils/markdown';
 
@@ -49,6 +50,20 @@
     URL.revokeObjectURL(url);
   }
 
+  let deleting = $state(false);
+
+  async function handleDelete() {
+    if (!confirm('确定删除这份报告吗？')) return;
+    deleting = true;
+    try {
+      const res = await fetch(`/api/reports/${$page.params.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        goto('/reports');
+      }
+    } catch { /* ignore */ }
+    deleting = false;
+  }
+
 </script>
 
 <div class="max-w-4xl mx-auto space-y-6">
@@ -78,6 +93,14 @@
             · {formatDate(report.createdAt.split('T')[0])}
           </div>
         </div>
+        <button
+          class="btn-ghost text-red-400 hover:text-red-600 text-lg px-2 ml-auto"
+          onclick={handleDelete}
+          disabled={deleting}
+          title="删除报告"
+        >
+          {deleting ? '...' : '🗑️'}
+        </button>
       </div>
 
       <!-- QA 状态 -->

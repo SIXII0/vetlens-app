@@ -212,10 +212,10 @@
           class="card-hover cursor-pointer transition-all"
           class:ring-2={expandedId === pet.id}
           class:ring-primary-300={expandedId === pet.id}
-          onclick={() => toggleExpand(pet.id)}
+          onclick={() => goto(`/pets/${pet.id}`)}
           role="button"
           tabindex="0"
-          onkeydown={(e) => { if (e.key === 'Enter') toggleExpand(pet.id); }}
+          onkeydown={(e) => { if (e.key === 'Enter') goto(`/pets/${pet.id}`); }}
         >
           <!-- 宠物基本信息 -->
           <div class="flex items-start justify-between">

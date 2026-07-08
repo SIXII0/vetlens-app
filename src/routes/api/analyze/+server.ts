@@ -65,41 +65,47 @@ export const POST: RequestHandler = async ({ request, url }) => {
     console.log(`[VetLens] 分析完成: ${result.summary.matchedItems}/${result.items.length} 匹配` +
       `, LLM: ${llmAvailable ? '✅' : '❌'}, 耗时 ${Date.now() - startTime}ms`);
 
-    // 自动归档就诊记录
+    // 自动归档就诊记录（仅首次分析时创建，报告生成时复用已有记录）
     let record;
-    try {
-      record = createRecord({
-        petId: input.petId,
-        hospitalName: input.hospitalName,
-        hospitalCity: input.city,
-        visitDate: input.visitDate,
-        visitReason: body.visitReason,
-        diagnosis: body.diagnosis,
-        totalAmount: result.totalAmount,
-        rawOcrText: body.rawOcrText
-      });
+    const existingRecordId = body.recordId;
+    if (!existingRecordId) {
+      try {
+        record = createRecord({
+          petId: input.petId,
+          hospitalName: input.hospitalName,
+          hospitalCity: input.city,
+          visitDate: input.visitDate,
+          visitReason: body.visitReason,
+          diagnosis: body.diagnosis,
+          totalAmount: result.totalAmount,
+          rawOcrText: body.rawOcrText
+        });
 
-      // 保存逐项明细
-      const lineItems = result.items.map((item, idx) => ({
-        id: uuid(),
-        record_id: record.id,
-        item_order: idx + 1,
-        raw_name: item.rawName,
-        category: item.category,
-        amount: item.amount,
-        matched_term: item.termMatch?.termId || null,
-        confidence: item.termMatch?.confidence || null,
-        explanation: item.explanation,
-        necessity: item.necessity,
-        price_level: item.priceAssessment?.level || null,
-        is_unknown: item.isUnknown ? 1 : 0
-      }));
-      insertLineItems(lineItems);
+        // 保存逐项明细
+        const lineItems = result.items.map((item, idx) => ({
+          id: uuid(),
+          record_id: record.id,
+          item_order: idx + 1,
+          raw_name: item.rawName,
+          category: item.category,
+          amount: item.amount,
+          matched_term: item.termMatch?.termId || null,
+          confidence: item.termMatch?.confidence || null,
+          explanation: item.explanation,
+          necessity: item.necessity,
+          price_level: item.priceAssessment?.level || null,
+          is_unknown: item.isUnknown ? 1 : 0
+        }));
+        insertLineItems(lineItems);
 
-      console.log(`[VetLens] 就诊记录已归档: ${record.id}`);
-    } catch (dbErr) {
-      console.error('[VetLens] 数据库写入失败，但分析结果仍然返回:', dbErr);
-      record = null;
+        console.log(`[VetLens] 就诊记录已归档: ${record.id}`);
+      } catch (dbErr) {
+        console.error('[VetLens] 数据库写入失败，但分析结果仍然返回:', dbErr);
+        record = null;
+      }
+    } else {
+      console.log(`[VetLens] 复用已有记录: ${existingRecordId}`);
+      record = { id: existingRecordId };
     }
 
     // ---- 报告生成（pet-vault-skill 模式） ----

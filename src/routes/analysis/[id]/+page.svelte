@@ -89,6 +89,7 @@
         rawOcrText: record.raw_ocr_text,
         useLlm: false,
         format: 'report',
+        recordId: record.id,
         reportType: 'auto',
         requestText: record.visit_reason || '账单分析',
         petId: record.pet_id || undefined,
