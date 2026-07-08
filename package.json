@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
+    "ocr": "python ocr_server/server.py",
+    "dev:all": "concurrently -n web,ocr -c blue,green \"npm run dev\" \"npm run ocr\"",
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -28,6 +30,7 @@
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.20",
     "chart.js": "^4.4.7",
+    "concurrently": "^10.0.3",
     "postcss": "^8.4.49",
     "svelte": "^5.16.0",
     "svelte-check": "^4.1.0",
