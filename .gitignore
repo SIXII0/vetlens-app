@@ -16,6 +16,11 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Database (local user data, should not be in git)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
 # Logs
 *.log
 npm-debug.log*
