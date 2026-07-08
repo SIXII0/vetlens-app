@@ -106,6 +106,10 @@ def build_materials_index(data: dict) -> dict:
 def _sanitize_markdown(md: str) -> str:
     """预处理 Agent 生成的 Markdown，修复 LaTeX 不兼容格式"""
     import re
+    # 0. 统一换行符 + 确保列表项独占一行
+    md = md.replace('\r\n', '\n').replace('\r', '\n')
+    # 在非行首的 `- ` 前插入换行（修复 LLM 将多个列表项挤在一行的问题）
+    md = re.sub(r'(?<!\n)(?<!^)- (?!\s*-)', '\n- ', md)
     # 1. 移除 `> ` 引用标记内嵌的 `\n`（LaTeX 中会断开）
     # 2. 将 Markdown 表格转为缩进列表
     lines = md.split('\n')

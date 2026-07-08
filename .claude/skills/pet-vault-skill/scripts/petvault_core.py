@@ -542,15 +542,13 @@ def build_report_markdown(report_type: str, pet_name: str, materials_index: dict
         "## 使用材料",
     ]
     for material in materials:
-        lines.append(
-            "- "
-            f"{material['source_file']}：类型={material['type']}；"
-            f"日期={material.get('date') or UNKNOWN_TEXT}；"
-            f"宠物={material.get('pet_name') or UNKNOWN_TEXT}；"
-            f"医院={material.get('clinic') or UNKNOWN_TEXT}；"
-            f"置信度={material['confidence']}；"
-            f"状态={material.get('status') or UNKNOWN_TEXT}"
-        )
+        lines.append(f"- **{material['source_file']}**")
+        lines.append(f"  - 类型：{material['type']}")
+        lines.append(f"  - 日期：{material.get('date') or UNKNOWN_TEXT}")
+        lines.append(f"  - 宠物：{material.get('pet_name') or UNKNOWN_TEXT}")
+        lines.append(f"  - 医院：{material.get('clinic') or UNKNOWN_TEXT}")
+        lines.append(f"  - 置信度：{material['confidence']}")
+        lines.append(f"  - 状态：{material.get('status') or UNKNOWN_TEXT}")
 
     lines.extend(["", "## 事实"])
     if material_types:

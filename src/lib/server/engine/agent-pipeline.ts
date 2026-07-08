@@ -1,9 +1,11 @@
 /**
- * Agent 管线 — 将 pet-vault-skill v0.2.0 全部 13 个 agent 知识打包进 DeepSeek system prompt
+ * Agent 管线 — 将 pet-vault-skill 全部 13 个 agent 知识打包进 LLM system prompt
  *
  * 架构:
- *   前端 "下载 PDF" → runAgentPipeline() → DeepSeek 学完全部 skill → 生成报告 Markdown
+ *   前端 "下载 PDF" → runAgentPipeline() → LLM 学完全部 skill → 生成报告 Markdown
  *   → skill_bridge.py (--markdown) → LaTeX 模板 → XeLaTeX → PDF
+ *
+ * 支持的 LLM: Claude Code CLI / Claude API / DeepSeek / Ollama / OpenAI 兼容
  */
 import { getLlmAdapter } from '../llm/index';
 import fs from 'fs';
@@ -17,6 +19,9 @@ function buildSystemPrompt(): string {
 
 ## 编排规则 (Orchestrator)
 ${read('prompts/orchestrator_agent.md')}
+
+## 宠物档案推断 (Pet Profile Inference)
+${read('prompts/pet_profile_inference_agent.md')}
 
 ## 材料整理 (Material Organizer)
 ${read('prompts/material_organizer_agent.md')}
@@ -32,6 +37,15 @@ ${read('prompts/insurance_check_agent.md')}
 
 ## 慢病复查 (Chronic Care Review)
 ${read('prompts/chronic_care_review_agent.md')}
+
+## 家庭总结 (Family Summary)
+${read('prompts/family_summary_agent.md')}
+
+## 诊所 SOAP 草稿 (Clinic SOAP Draft)
+${read('prompts/clinic_soap_draft_agent.md')}
+
+## 诊所客户总结 (Clinic Client Summary)
+${read('prompts/clinic_client_summary_agent.md')}
 
 ## 报告组合 (Report Composer)
 ${read('prompts/report_composer_agent.md')}
@@ -52,11 +66,15 @@ ${read('prompts/latex_renderer_agent.md')}
 ## 报告格式标准 (Report Composer 输出规范)
 
 ### 必须包含的 5 个核心章节:
-1. ## 使用材料 — 来源文件列表（文件名、类型、日期、置信度）
+1. ## 使用材料 — 来源文件列表，每个文件占一个段落，字段（类型、日期、宠物、医院、置信度）各自缩进换行，不要挤在一行
 2. ## 事实 — 只陈述可直接提取的信息，不加解读
 3. ## 整理结果 — 先给结论摘要，再给分类详情和逐项解释
 4. ## 待确认 — 列出所有不确定项和缺失信息
 5. ## 后续建议 — 3-5 条具体可操作的下一步
+
+### 格式硬规则:
+- **每个 "- " 列表项独占一行**，严禁多个项目用 "- " 连在同一行
+- 子字段使用 "  - "（2空格缩进）逐行列出，不要用分号或顿号串联
 
 ### 禁止术语:
 PRD, Harness, HMW, POV, 产品需求文档, 设计提案约束, 开发者校验, agent, pipeline, API, JSON, stage
@@ -122,6 +140,9 @@ ${items}
 - **编号列表用纯数字**，不要在数字外加 ** 粗体标记。示例: "1. 核实..." 而非 "1. **核实...**"
 - **段落间留空行**，确保 LaTeX 正确分段
 - **不要使用 > 引用块嵌套多行内容**，用普通段落 + 缩进代替
+- **每个列表项独占一行**，不要把多个 "- " 项目挤在同一行，示例:
+  正确: "- 类型：bill\\n- 日期：2026-01-01\\n- 金额：¥100"
+  错误: "- 类型：bill- 日期：2026-01-01- 金额：¥100"
 - 禁止术语同样适用于 LaTeX 特殊字符: 不要使用 & _ $ % # { } ~ ^ \\`;
 
     console.log(`[Agent] System: ${buildSystemPrompt().length} 字符 → ${llm.name}`);
