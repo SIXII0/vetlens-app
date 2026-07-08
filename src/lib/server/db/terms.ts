@@ -179,10 +179,60 @@ export function getAllTerms(): TermRow[] {
 }
 
 /** 统计术语数量 */
-export function countTerms(): number {
+export function countTerms(source?: string): number {
   const db = getDb();
+  if (source) {
+    const row = db.prepare('SELECT COUNT(*) as cnt FROM kb_terms WHERE source = ?').get(source) as { cnt: number };
+    return row.cnt;
+  }
   const row = db.prepare('SELECT COUNT(*) as cnt FROM kb_terms').get() as { cnt: number };
   return row.cnt;
+}
+
+/** 按来源分页获取术语（用于审核） */
+export function getTermsBySource(source: string, limit = 50, offset = 0): TermRow[] {
+  const db = getDb();
+  return db.prepare(
+    'SELECT * FROM kb_terms WHERE source = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
+  ).all(source, limit, offset) as TermRow[];
+}
+
+/** 审核通过（将术语从 seed_unreviewed/user_contributed 提升为 builtin，可选补充字段） */
+export function approveTerm(id: string, reviewer: string, fields?: {
+  category?: string;
+  plain_explain?: string;
+  medical_explain?: string;
+  necessity_hint?: string;
+}): boolean {
+  const db = getDb();
+  if (fields && (fields.category || fields.plain_explain || fields.medical_explain || fields.necessity_hint)) {
+    const result = db.prepare(`
+      UPDATE kb_terms SET source = 'builtin', reviewed_by = ?,
+        category = COALESCE(NULLIF(?,''), category),
+        plain_explain = COALESCE(NULLIF(?,''), plain_explain),
+        medical_explain = COALESCE(NULLIF(?,''), medical_explain),
+        necessity_hint = COALESCE(NULLIF(?,''), necessity_hint)
+      WHERE id = ? AND source IN ('seed_unreviewed', 'user_contributed')
+    `).run(reviewer, fields.category || '', fields.plain_explain || '', fields.medical_explain || '', fields.necessity_hint || '', id);
+    return result.changes > 0;
+  }
+  const result = db.prepare(`
+    UPDATE kb_terms SET source = 'builtin', reviewed_by = ?
+    WHERE id = ? AND source IN ('seed_unreviewed', 'user_contributed')
+  `).run(reviewer, id);
+  return result.changes > 0;
+}
+
+/** 删除术语 */
+export function deleteTerm(id: string): boolean {
+  const db = getDb();
+  // 先从 FTS5 删除
+  const term = db.prepare('SELECT rowid FROM kb_terms WHERE id = ?').get(id) as { rowid: number } | undefined;
+  if (term) {
+    db.prepare('DELETE FROM kb_terms_fts WHERE rowid = ?').run(term.rowid);
+  }
+  const result = db.prepare('DELETE FROM kb_terms WHERE id = ?').run(id);
+  return result.changes > 0;
 }
 
 /** 插入未知术语（用户贡献） */
@@ -194,4 +244,10 @@ export function insertUnknownTerm(name: string, category = '其他'): string {
     VALUES (?, ?, ?, 'user_contributed', '待审核')
   `).run(id, name, category);
   return id;
+}
+
+/** 获取所有 source 值及其计数 */
+export function getSourceCounts(): Array<{ source: string; count: number }> {
+  const db = getDb();
+  return db.prepare('SELECT source, COUNT(*) as count FROM kb_terms GROUP BY source ORDER BY count DESC').all() as Array<{ source: string; count: number }>;
 }

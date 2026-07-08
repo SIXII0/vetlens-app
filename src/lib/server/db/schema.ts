@@ -80,7 +80,8 @@ CREATE TABLE IF NOT EXISTS kb_terms (
   necessity_hint  TEXT,
   source          TEXT DEFAULT 'builtin',
   reviewed_by     TEXT,
-  created_at      TEXT DEFAULT (datetime('now'))
+  created_at      TEXT DEFAULT (datetime('now')),
+  updated_at      TEXT
 );
 
 -- 知识库-价格参考

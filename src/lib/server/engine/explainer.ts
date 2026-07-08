@@ -92,7 +92,7 @@ async function enhanceUnknownItems(
 ): Promise<void> {
   const unknownNames = unknownList.map(u => `- ${u.item.rawName} (¥${u.item.amount.toFixed(2)})`).join('\n');
 
-  const prompt = `以下是中国宠物医院账单中的未知收费项目（不在现有知识库中），请为每个项目提供简洁的通俗解释（1-2句话），并推断其可能属于哪个类别（检查/药品/耗材/手术/处置/其他）：
+  const prompt = `以下是中国宠物医院账单中的未知收费项目（不在现有知识库中），请为每个项目提供简洁的通俗解释（1-2句话），并推断其可能属于哪个类别（检查/药品/治疗/手术/耗材/服务/预防/其他）：
 
 所在城市: ${city || '未知'}
 ${hospitalName ? `医院: ${hospitalName}` : ''}

@@ -2,145 +2,277 @@
   import { onMount } from 'svelte';
 
   let stats = $state({ termCount: 0, citiesWithPrices: [] as string[] });
+  let sourceCounts = $state<Array<{ source: string; count: number }>>([]);
   let terms = $state<any[]>([]);
   let loading = $state(true);
   let searchQuery = $state('');
   let searchResult = $state<any>(null);
 
+  // Tab 状态
+  let activeTab = $state<'builtin' | 'seed_unreviewed' | 'user_contributed'>('seed_unreviewed');
+  let expandedId = $state<string | null>(null);
+  let reviewMsg = $state('');
+  let aiReviewingId = $state<string | null>(null);
+  let categoryFilter = $state<string>('全部');
+
+  let filteredCategories = $derived(
+    ['全部', ...new Set(terms.map((t: any) => t.category || '其他')).values()].sort()
+  );
+
+  const SOURCE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+    builtin: { label: '已确认', icon: '✅', color: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    seed_unreviewed: { label: '待审核', icon: '⚠️', color: 'bg-amber-100 text-amber-700 border-amber-300' },
+    user_contributed: { label: '用户贡献', icon: '📝', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+  };
+
   onMount(async () => {
-    // 加载统计
-    try {
-      const res = await fetch('/api/knowledge/search?action=stats');
-      if (res.ok) stats = await res.json();
-    } catch { /* ignore */ }
-
-    // 加载所有术语
-    try {
-      const res = await fetch('/api/knowledge/search?action=all');
-      if (res.ok) terms = await res.json();
-    } catch { /* ignore */ }
-
+    const [sRes, rRes] = await Promise.all([
+      fetch('/api/knowledge/search?action=stats'),
+      fetch('/api/knowledge/review?action=stats'),
+    ]);
+    if (sRes.ok) stats = await sRes.json();
+    if (rRes.ok) {
+      const data = await rRes.json();
+      sourceCounts = data.counts;
+    }
+    await loadTerms();
     loading = false;
   });
 
+  async function loadTerms() {
+    loading = true;
+    const res = await fetch(`/api/knowledge/review?source=${activeTab}&limit=100`);
+    if (res.ok) {
+      const data = await res.json();
+      terms = data.terms;
+    }
+    loading = false;
+  }
+
+  function switchTab(tab: typeof activeTab) {
+    activeTab = tab;
+    expandedId = null;
+    loadTerms();
+  }
+
+  async function approveTerm(id: string, name: string) {
+    reviewMsg = '';
+    const res = await fetch('/api/knowledge/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, reviewer: 'admin' }),
+    });
+    if (res.ok) {
+      terms = terms.filter(t => t.id !== id);
+      updateCounts(activeTab, -1);
+      reviewMsg = `✅ "${name}" 已确认`;
+    } else {
+      reviewMsg = `❌ 操作失败`;
+    }
+  }
+
+  async function deleteTerm(id: string, name: string) {
+    reviewMsg = '';
+    if (!confirm(`确定删除 "${name}"？`)) return;
+    const res = await fetch('/api/knowledge/review', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) {
+      terms = terms.filter(t => t.id !== id);
+      updateCounts(activeTab, -1);
+      reviewMsg = `🗑️ "${name}" 已删除`;
+    }
+  }
+
+  function updateCounts(source: string, delta: number) {
+    const idx = sourceCounts.findIndex(c => c.source === source);
+    if (idx >= 0) sourceCounts[idx].count += delta;
+  }
+
   async function handleSearch() {
     if (!searchQuery.trim()) return;
-    try {
-      const res = await fetch(`/api/knowledge/search?action=match&q=${encodeURIComponent(searchQuery)}`);
-      if (res.ok) searchResult = await res.json();
-    } catch { /* ignore */ }
+    const res = await fetch(`/api/knowledge/search?action=match&q=${encodeURIComponent(searchQuery)}`);
+    if (res.ok) searchResult = await res.json();
+  }
+
+  function getSourceInfo(source: string) {
+    return SOURCE_LABELS[source] || { label: source, icon: '📋', color: 'bg-gray-100 text-gray-700 border-gray-300' };
+  }
+
+  async function aiReviewTerm(term: any) {
+    reviewMsg = '';
+    aiReviewingId = term.id;
+    const res = await fetch('/api/knowledge/review', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: term.id, name: term.name, aliases: term.aliases }),
+    });
+    aiReviewingId = null;
+    if (!res.ok) {
+      const err = await res.json();
+      reviewMsg = `❌ AI审核失败: ${err.error}`;
+      return;
+    }
+    const data = await res.json();
+    const r = data.review;
+    if (r.verdict === 'valid') {
+      terms = terms.filter(t => t.id !== term.id);
+      updateCounts(activeTab, -1);
+      const hints = [r.category, r.necessity_hint, r.plain_explain].filter(Boolean).join(' · ');
+      reviewMsg = `🤖✅ "${term.name}" → ${hints || '已确认'}（AI自动审核）`;
+    } else if (r.verdict === 'uncertain') {
+      reviewMsg = `🤖⚠️ "${term.name}" 无法确定: ${r.reason || 'AI不确定'} — 请手动审核`;
+    } else {
+      reviewMsg = `🤖❌ "${term.name}" 不是有效宠物医疗术语: ${r.reason || ''}`;
+    }
   }
 </script>
 
 <div class="max-w-4xl mx-auto space-y-6">
   <div class="flex items-center justify-between">
-    <h1 class="text-xl font-bold text-gray-900">📚 知识库</h1>
+    <h1 class="text-xl font-bold text-gray-900">📚 知识库审核</h1>
   </div>
 
-  <!-- 统计 -->
-  <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-    <div class="card text-center">
-      <div class="text-2xl font-bold text-primary-600">{stats.termCount}</div>
-      <div class="text-xs text-gray-500 mt-1">收录术语</div>
-    </div>
-    <div class="card text-center">
-      <div class="text-2xl font-bold text-vet-green">{stats.citiesWithPrices.length}</div>
-      <div class="text-xs text-gray-500 mt-1">价格覆盖城市</div>
-    </div>
-    <div class="card text-center">
-      <div class="text-2xl font-bold text-vet-amber">5</div>
-      <div class="text-xs text-gray-500 mt-1">知识库模块</div>
-    </div>
+  <!-- 统计卡片 -->
+  <div class="grid grid-cols-3 gap-4">
+    {#each sourceCounts as sc}
+      {@const info = getSourceInfo(sc.source)}
+      <button
+        class="card text-center cursor-pointer transition-all border-2
+               {activeTab === sc.source ? 'ring-2 ring-primary-300 scale-[1.02]' : 'border-transparent hover:border-gray-200'}"
+        onclick={() => switchTab(sc.source as typeof activeTab)}
+      >
+        <div class="text-lg">{info.icon}</div>
+        <div class="text-2xl font-bold mt-1">{sc.count}</div>
+        <div class="text-xs text-gray-500 mt-0.5">{info.label}</div>
+      </button>
+    {/each}
   </div>
 
-  <!-- 搜索 -->
-  <div class="card">
-    <h3 class="font-semibold text-gray-900 mb-3">术语查询</h3>
-    <div class="flex gap-3 mb-4">
-      <input
-        type="text"
-        class="input-field flex-1"
-        placeholder="输入收费项目名称，如：生化全套"
-        bind:value={searchQuery}
-        onkeydown={(e) => e.key === 'Enter' && handleSearch()}
-      />
-      <button class="btn-primary" onclick={handleSearch}>查询</button>
-    </div>
-
-    {#if searchResult}
-      {#if searchResult.match}
-        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-          <div class="font-semibold text-emerald-800 mb-2">
-            ✅ 已匹配: {searchResult.match.name}
-            <span class="text-xs text-emerald-600 ml-2">
-              (置信度: {(searchResult.match.confidence * 100).toFixed(0)}% · {searchResult.match.matchMethod})
-            </span>
-          </div>
-          <div class="text-sm text-emerald-700 space-y-1">
-            <div>📝 <strong>通俗解释</strong>: {searchResult.match.plainExplain}</div>
-            <div>🏥 <strong>分类</strong>: {searchResult.match.category} · <strong>必要性</strong>: {searchResult.match.necessityHint}</div>
-            {#if searchResult.match.aliases?.length}
-              <div>🏷️ <strong>别名</strong>: {searchResult.match.aliases.join(', ')}</div>
-            {/if}
-          </div>
-        </div>
-      {:else}
-        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div class="font-semibold text-amber-800 mb-1">❌ 未找到匹配</div>
-          <div class="text-sm text-amber-700">
-            "{searchQuery}" 暂未收录在知识库中。系统分析账单时会自动标注为未知项目并加入贡献队列（如果你开启了自动上传）。
-          </div>
-        </div>
-      {/if}
-    {/if}
-  </div>
-
-  <!-- 术语列表 -->
-  {#if loading}
-    <div class="card text-center py-12 text-gray-500">加载中...</div>
-  {:else}
-    <div class="card">
-      <h3 class="font-semibold text-gray-900 mb-4">全部术语 ({terms.length})</h3>
-
-      <div class="space-y-1">
-        {#each ['检查', '药品', '耗材', '处置', '手术', '其他'] as category}
-          {@const catTerms = terms.filter((t: any) => t.category === category)}
-          {#if catTerms.length > 0}
-            <details class="group" open={category === '检查'}>
-              <summary class="cursor-pointer py-2 px-3 hover:bg-gray-50 rounded-lg text-sm font-medium text-gray-700">
-                {category} ({catTerms.length})
-              </summary>
-              <div class="pl-4 space-y-0.5">
-                {#each catTerms as term}
-                  <div class="flex items-center gap-2 py-1.5 px-3 text-sm hover:bg-gray-50 rounded">
-                    <span class="font-medium text-gray-800">{term.name}</span>
-                    {#if term.aliases}
-                      <span class="text-xs text-gray-400">{JSON.parse(term.aliases).join(', ')}</span>
-                    {/if}
-                    <span class="ml-auto text-xs text-gray-400">{term.necessity_hint || ''}</span>
-                  </div>
-                {/each}
-              </div>
-            </details>
-          {/if}
-        {/each}
-      </div>
+  <!-- 操作反馈 -->
+  {#if reviewMsg}
+    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-4 py-2 text-sm">
+      {reviewMsg}
     </div>
   {/if}
 
-  <!-- 知识库扩展说明 -->
-  <div class="card bg-blue-50 border-blue-200">
-    <h3 class="font-semibold text-blue-800 mb-2">🔮 知识库扩展计划</h3>
-    <div class="text-sm text-blue-700 space-y-2">
-      <p>当前为内置种子数据（25 条术语 + 4 城市价格）。以下扩展通道已预留：</p>
-      <ul class="list-disc list-inside space-y-1 text-xs">
-        <li>📋 <strong>内置 JSON 文件</strong> — 随 Docker 镜像发布（当前）</li>
-        <li>🔄 <strong>git pull 更新</strong> — 手动拉取 pet-med-kb 仓库</li>
-        <li>📤 <strong>自动上传未知项目</strong> — 客户端 → api.vetlens.app（待建服务端）</li>
-        <li>🤝 <strong>合作方 API</strong> — 双向同步价格/药品数据（预留）</li>
-        <li>📡 <strong>Webhook 推送</strong> — 服务端增量更新（预留）</li>
-        <li>👥 <strong>社区共建</strong> — GitHub PR → 审核 → 合并（预留）</li>
-      </ul>
+  <!-- 搜索 -->
+  <div class="flex gap-2">
+    <input type="text" class="input-field flex-1" placeholder="搜索术语..." bind:value={searchQuery} onkeydown={(e) => e.key === 'Enter' && handleSearch()} />
+    <button class="btn-primary text-sm" onclick={handleSearch}>搜索</button>
+  </div>
+
+  {#if searchResult}
+    <div class="bg-gray-50 rounded-lg p-4 text-sm">
+      <div class="font-semibold mb-2">搜索结果: {searchResult.length} 条</div>
+      {#each searchResult as item}
+        <div class="py-1 border-b border-gray-100 last:border-0">
+          <span class="font-medium">{item.name}</span>
+          <span class="text-gray-400 ml-2">{item.category}</span>
+        </div>
+      {/each}
     </div>
+  {/if}
+
+  <!-- 术语列表 + 审核 -->
+  <div>
+    <!-- 分类筛选 -->
+    <div class="flex flex-wrap gap-1.5 mb-3">
+      {#each filteredCategories as cat}
+        <button
+          class="px-2.5 py-1 rounded-full text-xs font-medium transition-colors
+                 {categoryFilter === cat ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+          onclick={() => categoryFilter = cat}
+        >
+          {cat}
+        </button>
+      {/each}
+    </div>
+
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold text-gray-700">
+        {getSourceInfo(activeTab).icon} {getSourceInfo(activeTab).label}
+        <span class="text-gray-400 text-sm font-normal ml-2">{terms.length} 条</span>
+      </h3>
+      {#if activeTab !== 'builtin'}
+        <span class="text-xs text-gray-400">点击卡片展开详情，一键确认或删除</span>
+      {/if}
+    </div>
+
+    {#if loading}
+      <div class="text-center py-12 text-gray-400">加载中...</div>
+    {:else if terms.length === 0}
+      <div class="text-center py-12 text-gray-400">暂无术语</div>
+    {:else}
+      <div class="space-y-2">
+        {#each terms.filter((t: any) => categoryFilter === '全部' || (t.category || '其他') === categoryFilter) as term}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <div
+            class="card cursor-pointer hover:shadow-md transition-all"
+            class:ring-2={expandedId === term.id}
+            class:ring-primary-300={expandedId === term.id}
+            onclick={() => expandedId = expandedId === term.id ? null : term.id}
+            role="button" tabindex="0"
+            onkeydown={(e) => { if (e.key === 'Enter') expandedId = expandedId === term.id ? null : term.id; }}
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 flex-1 min-w-0">
+                <span class="font-medium text-gray-900 truncate">{term.name}</span>
+                <span class="text-xs px-1.5 py-0.5 rounded {term.category === '检查' ? 'bg-blue-100 text-blue-700' : term.category === '药品' ? 'bg-red-100 text-red-700' : term.category === '治疗' ? 'bg-amber-100 text-amber-700' : term.category === '手术' ? 'bg-purple-100 text-purple-700' : term.category === '耗材' ? 'bg-gray-100 text-gray-600' : term.category === '服务' ? 'bg-teal-100 text-teal-700' : term.category === '预防' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'} flex-shrink-0">{term.category || '其他'}</span>
+                {#if term.aliases}
+                  <span class="text-xs text-gray-400 truncate hidden sm:inline">
+                    {typeof term.aliases === 'string' ? term.aliases.slice(0, 60) : String(term.aliases).slice(0, 60)}
+                  </span>
+                {/if}
+              </div>
+              <span class="text-xs text-gray-400 flex-shrink-0 ml-2">{expandedId === term.id ? '▲' : '▼'}</span>
+            </div>
+
+            <!-- 展开详情 -->
+            {#if expandedId === term.id}
+              <div class="mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm">
+                {#if term.medical_explain}
+                  <div><span class="text-gray-400">医学解释：</span>{term.medical_explain}</div>
+                {/if}
+                {#if term.plain_explain}
+                  <div><span class="text-gray-400">通俗解释：</span>{term.plain_explain}</div>
+                {/if}
+                <div class="flex gap-4 text-xs text-gray-400">
+                  {#if term.necessity_hint}<span>必要性：{term.necessity_hint}</span>{/if}
+                  {#if term.reviewed_by}<span>审核人：{term.reviewed_by}</span>{/if}
+                </div>
+
+                <!-- 审核按钮 -->
+                {#if activeTab !== 'builtin'}
+                  <div class="flex gap-2 pt-2">
+                    <button
+                      class="flex-1 py-1.5 rounded text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+                      onclick={(e) => { e.stopPropagation(); approveTerm(term.id, term.name); }}
+                    >
+                      ✅ 手动确认
+                    </button>
+                    <button
+                      class="flex-1 py-1.5 rounded text-sm font-medium bg-purple-500 text-white hover:bg-purple-600 transition-colors disabled:opacity-60"
+                      disabled={aiReviewingId === term.id}
+                      onclick={(e) => { e.stopPropagation(); aiReviewTerm(term); }}
+                    >
+                      {aiReviewingId === term.id ? '🤖 审核中...' : '🤖 AI审核'}
+                    </button>
+                    <button
+                      class="flex-1 py-1.5 rounded text-sm font-medium bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                      onclick={(e) => { e.stopPropagation(); deleteTerm(term.id, term.name); }}
+                    >
+                      🗑️ 删除
+                    </button>
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
   </div>
 </div>

@@ -223,5 +223,167 @@
     "medical_explain": "检测猫肠道冠状病毒抗体或抗原，用于筛查猫传染性腹膜炎风险和腹泻病因鉴别",
     "plain_explain": "查猫咪是否携带冠状病毒——腹泻或怀疑传腹时检查",
     "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-cr",
+    "name": "CR检查",
+    "aliases": ["CR", "计算机X线摄影", "CR拍片"],
+    "category": "检查",
+    "medical_explain": "计算机X线摄影，使用可重复使用的成像板记录X线影像，经激光扫描数字化处理后获得高分辨率图像",
+    "plain_explain": "比普通X光更清晰的拍片方式——看骨骼和胸腔",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-iv-fluid-nacl",
+    "name": "氯化钠注射液",
+    "aliases": ["0.9%氯化钠", "生理盐水", "氯化钠输液", "盐水输液", "NaCl"],
+    "category": "药品",
+    "medical_explain": "0.9%氯化钠灭菌水溶液，用于补充体液和电解质，维持血容量，稀释药物后静脉输注",
+    "plain_explain": "生理盐水输液——补充水分、稀释药物后打点滴用",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-iv-fluid-glucose",
+    "name": "葡萄糖注射液",
+    "aliases": ["50%葡萄糖", "5%葡萄糖", "葡萄糖输液", "糖水输液"],
+    "category": "药品",
+    "medical_explain": "不同浓度葡萄糖灭菌水溶液，用于补充能量、纠正低血糖、稀释药物后静脉输注",
+    "plain_explain": "葡萄糖输液——补充能量和水分，低血糖或不吃东西时常用",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-water-soluble-vitamins",
+    "name": "水溶性维生素",
+    "aliases": ["复合维生素", "维生素B族", "维生素C", "维他命输液", "水维"],
+    "category": "药品",
+    "medical_explain": "含水溶性维生素B族和C的复合制剂，用于维生素缺乏补充、代谢支持、促进食欲和恢复",
+    "plain_explain": "补充多种维生素——生病期间帮助恢复体力和食欲",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-cefazolin",
+    "name": "头孢唑啉钠",
+    "aliases": ["头孢唑啉", "先锋霉素", "cefazolin", "先锋V"],
+    "category": "药品",
+    "medical_explain": "第一代头孢菌素类抗生素，抑制细菌细胞壁合成，对革兰氏阳性菌和部分阴性菌有效",
+    "plain_explain": "一种头孢类抗生素——常用于皮肤、软组织、泌尿道感染",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-tinidazole",
+    "name": "替硝唑",
+    "aliases": ["Tinidazole", "硝基咪唑", "替硝唑氯化钠"],
+    "category": "药品",
+    "medical_explain": "硝基咪唑类抗厌氧菌和抗原虫药物，抑制病原体DNA合成，用于厌氧菌感染和滴虫等原虫感染",
+    "plain_explain": "一种专门的抗生素——针对厌氧菌和某些寄生虫感染",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-anisodamine",
+    "name": "消旋山莨菪碱",
+    "aliases": ["654-2", "山莨菪碱", "解痉药"],
+    "category": "药品",
+    "medical_explain": "抗胆碱类药物，通过阻断M胆碱受体解除平滑肌痉挛、改善微循环，用于胃肠绞痛、胆道痉挛等",
+    "plain_explain": "一种解除内脏痉挛的药——肚子疼、呕吐时用",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-marbofloxacin",
+    "name": "麻佛霉素",
+    "aliases": ["麻佛微素", "Marbofloxacin", "麻佛"],
+    "category": "药品",
+    "medical_explain": "氟喹诺酮类宠物专用广谱抗生素，对革兰氏阴性菌和部分阳性菌有效，用于呼吸道、泌尿道、皮肤感染",
+    "plain_explain": "宠物专用抗生素——常用于呼吸道、泌尿道感染",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-moxifloxacin",
+    "name": "莫西沙星",
+    "aliases": ["Moxifloxacin", "拜复乐", "莫西"],
+    "category": "药品",
+    "medical_explain": "第四代氟喹诺酮类广谱抗生素，对革兰氏阳性菌、阴性菌和厌氧菌均有活性，呼吸道感染常用",
+    "plain_explain": "一种较强的抗生素——呼吸道感染和其他细菌感染时可能用到",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-subcutaneous-injection",
+    "name": "皮下注射",
+    "aliases": ["皮下", "打皮下针", "皮注", "SC"],
+    "category": "治疗",
+    "medical_explain": "将药物注射到皮下组织，通过毛细血管缓慢吸收，用于皮下补液和部分药物给药",
+    "plain_explain": "把药打在皮肤下面——补液和打部分针剂时用",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-iv-catheter-placement",
+    "name": "留置针埋置",
+    "aliases": ["埋置留置针", "打留置针", "静脉穿刺", "埋留置"],
+    "category": "治疗",
+    "medical_explain": "在静脉内埋置留置软管，建立稳定静脉通路，用于输液、给药和采血",
+    "plain_explain": "在血管里放一根软管——方便输液和推药，不用每次扎针",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-syringe-2ml",
+    "name": "注射器",
+    "aliases": ["2ml注射器", "5ml注射器", "一次性注射器", "针筒"],
+    "category": "耗材",
+    "medical_explain": "一次性无菌注射器，用于药物配制和注射给药，2ml和5ml为常用规格",
+    "plain_explain": "打针用的一次性注射器——普通耗材费用",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-emergency-registration",
+    "name": "急诊挂号",
+    "aliases": ["急诊", "夜诊挂号", "急诊挂号费"],
+    "category": "服务",
+    "medical_explain": "非正常工作时间（夜间、周末、节假日）就诊的挂号费用，含急诊加收",
+    "plain_explain": "晚上或节假日看病的挂号费——比普通挂号贵",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-blood-parasite-panel",
+    "name": "血液寄生虫检查",
+    "aliases": ["血液寄生虫全套", "血涂片", "寄生虫镜检", "巴贝斯虫", "血液原虫"],
+    "category": "检查",
+    "medical_explain": "显微镜检查血涂片中的血液寄生虫，包括巴贝斯虫、泰勒虫、心丝虫微丝蚴等",
+    "plain_explain": "抽血查血液里有没有寄生虫——蜱虫叮咬后建议检查",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-fhv-test",
+    "name": "猫疱疹病毒检测",
+    "aliases": ["猫鼻支检测", "FHV检测", "猫疱疹", "猫鼻支"],
+    "category": "检查",
+    "medical_explain": "检测猫疱疹病毒I型抗原或核酸，用于猫病毒性鼻气管炎的诊断",
+    "plain_explain": "查猫咪有没有猫鼻支病毒——打喷嚏、流鼻涕、眼睛发炎时检查",
+    "necessity_hint": "🟡 建议做"
+  },
+  {
+    "id": "term-default-iv",
+    "name": "静脉输液费",
+    "aliases": ["输液费", "输液", "静脉输液", "打点滴", "挂水"],
+    "category": "治疗",
+    "medical_explain": "通过静脉留置针持续输注液体和药物，含输液泵使用和护理人工",
+    "plain_explain": "打点滴的费用——含人工和输液泵，不含药品",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-blood-chemistry",
+    "name": "血液生化检查",
+    "aliases": ["生化", "血液生化", "大生化", "生化十七项", "Biochem", "Biochemistry"],
+    "category": "检查",
+    "medical_explain": "检测血清中肝肾功能、血糖、血脂、蛋白、电解质等多项生化指标，全面评估内脏器官功能",
+    "plain_explain": "抽血查肝肾功能和血糖血脂——了解内脏工作状态",
+    "necessity_hint": "🔴 必做"
+  },
+  {
+    "id": "term-antibiotic-general",
+    "name": "抗生素",
+    "aliases": ["Antibiotic", "抗菌素", "消炎药"],
+    "category": "药品",
+    "medical_explain": "通用抗菌药物分类，根据具体药品成分覆盖不同细菌感染，需兽医处方使用",
+    "plain_explain": "抗细菌感染的药物——需要兽医根据感染类型选择具体药品",
+    "necessity_hint": "🔴 必做"
   }
 ]

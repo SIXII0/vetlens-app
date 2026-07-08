@@ -140,7 +140,7 @@ function checkSingleItem(policy: InsurancePolicy, item: AnalyzedItem): Insurance
   }
 
   // 检查类项目
-  if (category === '检查' || category === '药品' || category === '手术' || category === '处置') {
+  if (category === '检查' || category === '药品' || category === '手术' || category === '治疗') {
     return {
       itemName: item.rawName,
       amount: item.amount,

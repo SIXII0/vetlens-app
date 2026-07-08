@@ -10,7 +10,7 @@ import { getDb } from '../db/index';
 const DATA_DIR = path.join(process.cwd(), 'data');
 
 /** 加载所有知识库数据到 SQLite */
-export function loadAllKnowledge(): { terms: number; prices: number; drugs: number; breeds: number } {
+export function loadAllKnowledge(force = false): { terms: number; prices: number; drugs: number; breeds: number } {
   const results = {
     terms: 0,
     prices: 0,
@@ -18,10 +18,12 @@ export function loadAllKnowledge(): { terms: number; prices: number; drugs: numb
     breeds: 0
   };
 
-  // 如果已有数据，跳过导入
-  const existingTerms = countTerms();
-  if (existingTerms > 0) {
-    return { ...results, terms: existingTerms };
+  // 如果已有数据且非强制重载，跳过导入
+  if (!force) {
+    const existingTerms = countTerms();
+    if (existingTerms > 0) {
+      return { ...results, terms: existingTerms };
+    }
   }
 
   // 加载术语库

@@ -10,7 +10,7 @@ export const GET: RequestHandler = async () => {
     // 强制清空初始化标记并重新加载
     log.push('开始重新加载知识库...');
 
-    const builtin = loadAllKnowledge();
+    const builtin = loadAllKnowledge(true);
     log.push(`内置种子: ${builtin.terms} 术语, ${builtin.prices} 价格`);
 
     const external = importAllExternal();
