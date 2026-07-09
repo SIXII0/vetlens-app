@@ -219,4 +219,35 @@ CREATE TABLE IF NOT EXISTS health_scores (
 );
 CREATE INDEX IF NOT EXISTS idx_health_pet ON health_scores(pet_id);
 CREATE INDEX IF NOT EXISTS idx_health_date ON health_scores(test_date);
+
+-- 疫苗/驱虫日历
+CREATE TABLE IF NOT EXISTS vaccine_schedule (
+  id            TEXT PRIMARY KEY,
+  pet_id        TEXT REFERENCES pets(id) ON DELETE CASCADE,
+  vaccine_type  TEXT NOT NULL,  -- '三联','狂犬','驱虫-体内','驱虫-体外' 等
+  species       TEXT NOT NULL DEFAULT '猫',
+  date_given    TEXT NOT NULL,
+  next_date     TEXT NOT NULL,
+  notes         TEXT,
+  status        TEXT DEFAULT 'upcoming',  -- 'done'/'upcoming'/'overdue'
+  created_at    TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_vaccine_pet ON vaccine_schedule(pet_id);
+
+-- 用药提醒
+CREATE TABLE IF NOT EXISTS medication_reminders (
+  id            TEXT PRIMARY KEY,
+  pet_id        TEXT REFERENCES pets(id) ON DELETE CASCADE,
+  med_name      TEXT NOT NULL,
+  dosage        TEXT,           -- 如 '2.5mg/kg'
+  frequency     TEXT NOT NULL,  -- '每天'/'每12小时'/'每周' 等
+  start_date    TEXT NOT NULL,
+  end_date      TEXT,           -- null = 长期
+  last_given    TEXT,
+  next_due      TEXT NOT NULL,
+  notes         TEXT,
+  active        INTEGER DEFAULT 1,
+  created_at    TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_med_pet ON medication_reminders(pet_id);
 `;

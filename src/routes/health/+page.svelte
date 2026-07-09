@@ -4,7 +4,7 @@
 
   let activePetId = $state<string | null>(null);
   let species = $state<'猫' | '狗'>('猫');
-  let activeTab = $state<'input' | 'trend'>('input');
+  let activeTab = $state<'input' | 'trend' | 'weight'>('input');
   let loading = $state(false);
   let msg = $state('');
 
@@ -79,6 +79,35 @@
     return { pts, maxY, w: pts.length * 40, h: 180, pointsStr: pts.map((p, i) => `${i*40+20},${180 - (p.y/maxY)*160}`).join(' ') };
   });
 
+  // ── 体重追踪 ──
+  let weights = $state<any[]>([]);
+  let weightVal = $state('');
+  let weightDate = $state(new Date().toISOString().split('T')[0]);
+
+  async function loadWeights() {
+    if (!activePetId) return;
+    const res = await fetch(`/api/health-scores?petId=${activePetId}&limit=100`);
+    if (res.ok) {
+      const all = await res.json();
+      weights = all.filter((h:any) => h.notes?.includes('[体重]')).map((h:any) => {
+        const w = parseFloat(h.notes?.replace('[体重]','').trim());
+        return { date: h.test_date, weight: isNaN(w) ? null : w };
+      }).filter((w:any) => w.weight !== null).reverse();
+    }
+  }
+
+  async function addWeight() {
+    if (!activePetId || !weightVal) return;
+    const w = parseFloat(weightVal);
+    if (isNaN(w) || w <= 0) return;
+    const pet = $pets.find(p => p.id === activePetId);
+    await fetch('/api/health-scores', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ petId: activePetId, testDate: weightDate, species: pet?.species||'猫', notes: `[体重]${w}`, bun:null,crea:null,glu:null,amy:null,wbc:null,rbc:null,hct:null }),
+    });
+    weightVal = ''; loadWeights();
+  }
+
   function scoreColor(s: number | null): string {
     if (s === null) return 'text-warm-400';
     if (s >= 80) return 'text-emerald-600'; else if (s >= 50) return 'text-amber-600';
@@ -118,8 +147,9 @@
     <div class="card text-center py-12 text-warm-400">请先选择一只宠物</div>
   {:else}
     <div class="flex gap-1 bg-warm-100 rounded-lg p-1">
-      <button class="flex-1 py-2 rounded-md text-sm font-medium transition-colors {activeTab==='input'?'bg-white shadow-sm text-warm-900':'text-warm-500'}" onclick={()=>activeTab='input'}>📝 录入数据</button>
+      <button class="flex-1 py-2 rounded-md text-sm font-medium transition-colors {activeTab==='input'?'bg-white shadow-sm text-warm-900':'text-warm-500'}" onclick={()=>activeTab='input'}>📝 化验评分</button>
       <button class="flex-1 py-2 rounded-md text-sm font-medium transition-colors {activeTab==='trend'?'bg-white shadow-sm text-warm-900':'text-warm-500'}" onclick={()=>activeTab='trend'}>📈 趋势曲线</button>
+      <button class="flex-1 py-2 rounded-md text-sm font-medium transition-colors {activeTab==='weight'?'bg-white shadow-sm text-warm-900':'text-warm-500'}" onclick={()=>{activeTab='weight';loadWeights();}}>⚖️ 体重追踪</button>
     </div>
 
     {#if msg}
@@ -223,6 +253,41 @@
       {:else if !lastResult}
         <div class="card text-center py-12 text-warm-400">暂无健康数据，请先录入</div>
       {/if}
+    {:else if activeTab === 'weight'}
+      <div class="card">
+        <h3 class="font-semibold text-warm-700 mb-3">⚖️ 体重记录</h3>
+        <div class="flex gap-2 mb-4">
+          <input type="number" step="0.1" class="input-field w-32" placeholder="kg" bind:value={weightVal} />
+          <input type="date" class="input-field w-40" bind:value={weightDate} />
+          <button class="btn-primary text-sm" onclick={addWeight} disabled={!weightVal}>记录</button>
+        </div>
+        {#if weights.length >= 2}
+          <div class="relative h-32">
+            <svg viewBox="0 0 {weights.length*50} 140" class="w-full h-full">
+              <polyline fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"
+                points={(()=>{const maxW=Math.max(...weights.map((w:any)=>w.weight),1);const minW=Math.min(...weights.map((w:any)=>w.weight),0);return weights.map((w:any,i:number)=>`${i*50+25},${140-((w.weight-minW)/(maxW-minW||1))*100}`).join(' ')})()}/>
+              {#each weights as w, i}
+                {@const maxW = Math.max(...weights.map((x:any)=>x.weight), 1)}
+                {@const minW = Math.min(...weights.map((x:any)=>x.weight), 0)}
+                <circle cx={i*50+25} cy={140-((w.weight-minW)/(maxW-minW||1))*100} r="4" fill="#f97316" stroke="white" stroke-width="2"/>
+                <text x={i*50+25} y="155" fill="#9ca3af" font-size="9" text-anchor="middle">{w.date.slice(5)}</text>
+              {/each}
+            </svg>
+          </div>
+        {:else}
+          <div class="text-center py-6 text-warm-400 text-sm">记录2次以上体重即可生成趋势曲线</div>
+        {/if}
+        {#if weights.length > 0}
+          <div class="mt-3 space-y-1">
+            {#each [...weights].reverse().slice(0,10) as w}
+              <div class="flex justify-between text-sm py-1 border-b border-warm-100 last:border-0">
+                <span class="text-warm-500">{w.date}</span>
+                <span class="font-semibold text-warm-900">{w.weight} kg</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
     {/if}
   {/if}
 </div>

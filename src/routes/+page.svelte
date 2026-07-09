@@ -10,16 +10,20 @@
   }> = [];
   let stats = { recordCount: 0 };
   let loaded = $state(false);
+  let upcomingVaccines = $state<any[]>([]);
+  let upcomingMeds = $state<any[]>([]);
 
   onMount(async () => {
     loadPets();
     try {
-      const res = await fetch('/api/records?limit=5');
-      if (res.ok) {
-        const data = await res.json();
-        recentRecords = data.records;
-        stats.recordCount = data.total;
-      }
+      const [recRes, vacRes, medRes] = await Promise.all([
+        fetch('/api/records?limit=5'),
+        fetch('/api/vaccines?status=upcoming'),
+        fetch('/api/medications'),
+      ]);
+      if (recRes.ok) { const d = await recRes.json(); recentRecords = d.records; stats.recordCount = d.total; }
+      if (vacRes.ok) upcomingVaccines = (await vacRes.json()).filter((v:any) => new Date(v.next_date) <= new Date(Date.now() + 30*86400000));
+      if (medRes.ok) upcomingMeds = (await medRes.json()).filter((m:any) => new Date(m.next_due) <= new Date(Date.now() + 7*86400000));
     } catch { /* ignore */ }
     loaded = true;
   });
@@ -73,6 +77,28 @@
       <div class="card text-center"><div class="skeleton h-10 w-16 mx-auto rounded"></div><div class="skeleton h-3 w-12 mx-auto mt-2 rounded"></div></div>
     {/if}
   </div>
+
+  <!-- 到期提醒 -->
+  {#if upcomingVaccines.length > 0 || upcomingMeds.length > 0}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {#if upcomingVaccines.length > 0}
+        <a href="/vaccines" class="card no-underline border-amber-200 bg-amber-50/50 hover:shadow-raised transition-all">
+          <div class="flex items-center gap-2 mb-2"><span class="text-lg">💉</span><h3 class="font-semibold text-sm text-warm-900">疫苗/驱虫到期</h3></div>
+          {#each upcomingVaccines.slice(0,3) as v}
+            <div class="text-xs text-warm-600 flex justify-between"><span>{v.vaccine_type}</span><span class="text-amber-600">{v.next_date}</span></div>
+          {/each}
+        </a>
+      {/if}
+      {#if upcomingMeds.length > 0}
+        <a href="/medications" class="card no-underline border-red-200 bg-red-50/30 hover:shadow-raised transition-all">
+          <div class="flex items-center gap-2 mb-2"><span class="text-lg">💊</span><h3 class="font-semibold text-sm text-warm-900">用药提醒</h3></div>
+          {#each upcomingMeds.slice(0,3) as m}
+            <div class="text-xs text-warm-600 flex justify-between"><span>{m.med_name}</span><span class="text-red-500">{m.next_due}</span></div>
+          {/each}
+        </a>
+      {/if}
+    </div>
+  {/if}
 
   <!-- 快捷操作 -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

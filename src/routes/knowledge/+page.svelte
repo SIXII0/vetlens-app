@@ -101,6 +101,38 @@
     return SOURCE_LABELS[source] || { label: source, icon: '📋', color: 'bg-warm-100 text-warm-700 border-warm-300' };
   }
 
+  let batchReviewing = $state(false);
+  let batchProgress = $state('');
+
+  async function batchAiReview() {
+    if (!confirm(`确定用AI批量审核 ${terms.length} 条术语吗？确认的会自动入库。`)) return;
+    batchReviewing = true; batchProgress = '';
+    let approved = 0, uncertain = 0, invalid = 0, errors = 0;
+    const total = terms.length;
+    for (let i = 0; i < terms.length; i++) {
+      const t = terms[i];
+      batchProgress = `${i+1}/${total}`;
+      try {
+        const res = await fetch('/api/knowledge/review', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: t.id, name: t.name, aliases: t.aliases }),
+        });
+        if (res.ok) {
+          const d = await res.json();
+          if (d.autoApproved) approved++;
+          else if (d.review?.verdict === 'uncertain') uncertain++;
+          else if (d.review?.verdict === 'invalid') invalid++;
+          if (d.autoApproved) terms = terms.filter(x => x.id !== t.id);
+        } else errors++;
+      } catch { errors++; }
+      await new Promise(r => setTimeout(r, 200)); // rate limit
+    }
+    updateCounts(activeTab, -(approved));
+    reviewMsg = `🤖 批量审核完成: ✅${approved} 自动确认 | ⚠️${uncertain} 不确定 | ❌${invalid} 无效 | ❌${errors} 失败`;
+    batchReviewing = false; batchProgress = '';
+    loadTerms();
+  }
+
   async function aiReviewTerm(term: any) {
     reviewMsg = '';
     aiReviewingId = term.id;
@@ -133,6 +165,11 @@
 <div class="max-w-4xl mx-auto space-y-6">
   <div class="flex items-center justify-between">
     <h1 class="text-xl font-bold text-warm-900">📚 知识库审核</h1>
+    {#if activeTab !== 'builtin'}
+      <button class="btn-primary text-sm" onclick={batchAiReview} disabled={batchReviewing}>
+        {batchReviewing ? '🤖 审核中...' : '🤖 批量AI审核'}
+      </button>
+    {/if}
   </div>
 
   <!-- 统计卡片 -->
@@ -152,9 +189,9 @@
   </div>
 
   <!-- 操作反馈 -->
-  {#if reviewMsg}
+  {#if reviewMsg || batchReviewing}
     <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-4 py-2 text-sm">
-      {reviewMsg}
+      {batchReviewing ? `🤖 AI批量审核中... ${batchProgress}` : reviewMsg}
     </div>
   {/if}
 

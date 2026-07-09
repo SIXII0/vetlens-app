@@ -30,13 +30,15 @@
       <a href="/reports" class="sub-i {active('/reports')?'on':''}">📄 分析报告</a>
     </div>
 
-    <button class="nv w-full" class:on={active('/pets')||active('/health')} onclick={()=>toggle('pets')}>
+    <button class="nv w-full" class:on={active('/pets')||active('/health')||active('/vaccines')||active('/medications')} onclick={()=>toggle('pets')}>
       <span class="nv-icon">🐾</span><span class="flex-1">宠物档案</span>
       <svg class="w-3 h-3 transition-transform duration-200 {expandedGroup==='pets'?'rotate-90':''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
     </button>
     <div class="sub {expandedGroup==='pets'?'open':''}">
-      <a href="/pets" class="sub-i {active('/pets') && !active('/health')?'on':''}">🐱 宠物列表</a>
+      <a href="/pets" class="sub-i {active('/pets') && !active('/health') && !active('/vaccines') && !active('/medications')?'on':''}">🐱 宠物列表</a>
       <a href="/health" class="sub-i {active('/health')?'on':''}">🩺 健康监测</a>
+      <a href="/vaccines" class="sub-i {active('/vaccines')?'on':''}">💉 疫苗驱虫</a>
+      <a href="/medications" class="sub-i {active('/medications')?'on':''}">💊 用药提醒</a>
     </div>
 
     <div class="mx-2 my-1.5 border-t border-warm-100"></div>
