@@ -12,26 +12,51 @@ VetLens 是一个宠物医疗账单解读与保险预检的 Web 应用。
 
 ## 快速开始
 
-### Docker 部署（推荐）
+### 一键部署（新电脑）
+
+**Windows (PowerShell 管理员)：**
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+.\setup.ps1
+```
+自动安装 Node.js / Python / Tesseract / 中文语言包 / 所有依赖。
+
+**macOS / Linux：**
+```bash
+bash setup.sh
+```
+
+### .env 配置
+
+部署后编辑 `.env`，至少填入：
+
+```env
+DOUBAO_API_KEY=你的豆包API Key        # OCR智能提取（必填）
+AMAP_WEB_KEY=你的高德Web端Key          # 地图显示
+AMAP_SERVICE_KEY=你的高德Web服务Key    # 附近医院搜索
+```
+
+### 启动
 
 ```bash
-docker-compose up -d
+npm run dev:all    # 一键启动 Web + OCR 服务器
+npm run dev        # 仅 Web 服务器
 ```
 
 访问 http://localhost:3000
 
-### 本地开发
+### 环境依赖
 
-```bash
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-
-# 构建生产版本
-npm run build
-```
+| 组件 | 用途 | 必需 |
+|------|------|------|
+| Node.js >= 18 | Web 服务器 | ✅ |
+| Python >= 3.11 | OCR 服务器 + PDF 管线 | ✅ |
+| Tesseract OCR | 图片文字识别 | ✅ |
+| Tesseract chi_sim | 中文识别语言包 | ✅ |
+| Pillow / Flask | OCR 服务依赖 | ✅ |
+| MiKTeX / XeLaTeX | PDF 编译 | ❌ 可选 |
+| 豆包 API Key | OCR 智能提取 | ❌ 建议 |
+| 高德 API Key | 地图+医院搜索 | ❌ 可选 |
 
 ## 技术栈
 
