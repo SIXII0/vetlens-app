@@ -70,14 +70,29 @@ export const GET: RequestHandler = async ({ params, url }) => {
   `).get(petId) as any;
 
   if (policy) {
+    // 计算可赔付总额：只含检查/药品/手术/治疗/耗材类，排除预防/服务类
+    const coverableRow = db.prepare(`
+      SELECT COALESCE(SUM(li.amount), 0) AS coverable_total
+      FROM line_items li
+      JOIN records r ON li.record_id = r.id
+      WHERE r.pet_id = ?
+        AND cast(strftime('%Y', r.visit_date) AS integer) = ?
+        AND (li.category IN ('检查','药品','手术','治疗','耗材')
+             OR (li.category = '其他' AND li.raw_name NOT LIKE '%疫苗%'
+                  AND li.raw_name NOT LIKE '%驱虫%'
+                  AND li.raw_name NOT LIKE '%体检%'
+                  AND li.raw_name NOT LIKE '%美容%'))
+    `).get(petId, year) as { coverable_total: number };
+
     const deductible = policy.deductible || 0;
     const reimbursementRate = policy.reimbursement_rate || 0.6;
     const annualLimit = policy.annual_limit || 15000;
-    const deductibleMet = annualTotal >= deductible;
+    const totalCoverable = coverableRow?.coverable_total || 0;
+    const deductibleMet = totalCoverable >= deductible;
     const estimatedPayout = deductibleMet
-      ? Math.min((annualTotal - deductible) * reimbursementRate, annualLimit)
+      ? Math.round(Math.min((totalCoverable - deductible) * reimbursementRate, annualLimit) * 100) / 100
       : 0;
-    const netOutOfPocket = annualTotal - estimatedPayout;
+    const netOutOfPocket = Math.round((annualTotal - estimatedPayout) * 100) / 100;
 
     insurance = {
       hasPolicy: true,
@@ -88,8 +103,8 @@ export const GET: RequestHandler = async ({ params, url }) => {
       deductible,
       reimbursementRate,
       totalSpent: annualTotal,
-      estimatedPayout: Math.round(estimatedPayout * 100) / 100,
-      netOutOfPocket: Math.round(netOutOfPocket * 100) / 100,
+      estimatedPayout,
+      netOutOfPocket,
       limitUsedPct: annualLimit > 0 ? Math.round((estimatedPayout / annualLimit) * 100) : 0,
       deductibleMet,
     };

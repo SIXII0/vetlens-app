@@ -99,7 +99,7 @@ export interface InsuranceCheckItem {
   amount: number;
   coverable: boolean;
   reason: string;
-  estimatedPayout: number;
+  estimatedPayout: number | null;
 }
 
 export interface InsuranceCheckResult {

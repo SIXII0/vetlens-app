@@ -125,49 +125,31 @@ function checkSingleItem(policy: InsurancePolicy, item: AnalyzedItem): Insurance
     }
   }
 
-  // 预防性项目通常不赔（疫苗、驱虫、体检等）
+  // 预防/服务类项目通常不赔
+  if (category === '预防' || category === '服务') {
+    return { itemName: item.rawName, amount: item.amount, coverable: false,
+      reason: `${category}类项目，通常不在保障范围内`, estimatedPayout: 0 };
+  }
+
+  // 关键词兜底：预防性项目
   const preventiveKeywords = ['疫苗', '驱虫', '体检', '美容', '洗澡', '粮食', '零食', '营养膏', '保健品'];
   for (const kw of preventiveKeywords) {
     if (item.rawName.includes(kw)) {
-      return {
-        itemName: item.rawName,
-        amount: item.amount,
-        coverable: false,
-        reason: '预防性或非医疗项目，不在保障范围内',
-        estimatedPayout: 0
-      };
+      return { itemName: item.rawName, amount: item.amount, coverable: false,
+        reason: '预防性或非医疗项目，不在保障范围内', estimatedPayout: 0 };
     }
   }
 
-  // 检查类项目
-  if (category === '检查' || category === '药品' || category === '手术' || category === '治疗') {
-    return {
-      itemName: item.rawName,
-      amount: item.amount,
-      coverable: true,
-      reason: '诊断和治疗相关项目，通常在保障范围内',
-      estimatedPayout: Math.round(item.amount * 100) / 100
-    };
+  // 可赔付类别
+  const coverableCategories = ['检查', '药品', '手术', '治疗', '耗材'];
+  if (coverableCategories.includes(category)) {
+    return { itemName: item.rawName, amount: item.amount, coverable: true,
+      reason: `${category}类项目，通常在保障范围内`,
+      estimatedPayout: null };  // 逐项不预估，汇总后统一计算
   }
 
-  // 耗材类：部分可赔付
-  if (category === '耗材') {
-    return {
-      itemName: item.rawName,
-      amount: item.amount,
-      coverable: true,
-      reason: '治疗相关耗材，可能在保障范围内（具体以条款为准）',
-      estimatedPayout: Math.round(item.amount * 100) / 100
-    };
-  }
-
-  return {
-    itemName: item.rawName,
-    amount: item.amount,
-    coverable: false,
-    reason: '无法确定是否在保障范围内，建议提交理赔时咨询保险公司',
-    estimatedPayout: 0
-  };
+  return { itemName: item.rawName, amount: item.amount, coverable: false,
+    reason: '无法确定是否在保障范围内，建议咨询保险公司', estimatedPayout: 0 };
 }
 
 /** 获取理赔所需材料清单 */
