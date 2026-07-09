@@ -119,7 +119,7 @@
 
 <div class="max-w-4xl mx-auto space-y-6">
   <div class="flex items-center justify-between">
-    <h1 class="text-xl font-bold text-gray-900">🐾 宠物档案</h1>
+    <h1 class="text-xl font-bold text-warm-900">🐾 宠物档案</h1>
     <button class="btn-primary text-sm" onclick={() => { showForm = true; resetForm(); }}>
       + 添加宠物
     </button>
@@ -143,21 +143,21 @@
   <!-- 添加表单 -->
   {#if showForm}
     <div class="card">
-      <h3 class="font-semibold text-gray-900 mb-4">添加新宠物</h3>
+      <h3 class="font-semibold text-warm-900 mb-4">添加新宠物</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">名字 *</label>
+          <label class="block text-xs font-medium text-warm-500 mb-1">名字 *</label>
           <input type="text" class="input-field" bind:value={formName} placeholder="如：咪咪" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">品种 *</label>
+          <label class="block text-xs font-medium text-warm-500 mb-1">品种 *</label>
           <select class="input-field" bind:value={formSpecies}>
             <option value="猫">🐱 猫</option>
             <option value="狗">🐶 狗</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">品种</label>
+          <label class="block text-xs font-medium text-warm-500 mb-1">品种</label>
           <input
             type="text"
             class="input-field"
@@ -167,7 +167,7 @@
           />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">性别</label>
+          <label class="block text-xs font-medium text-warm-500 mb-1">性别</label>
           <select class="input-field" bind:value={formGender}>
             <option value="">未指定</option>
             <option value="公">公</option>
@@ -177,11 +177,11 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">出生日期</label>
+          <label class="block text-xs font-medium text-warm-500 mb-1">出生日期</label>
           <input type="date" class="input-field" bind:value={formBirthDate} />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">体重 (kg)</label>
+          <label class="block text-xs font-medium text-warm-500 mb-1">体重 (kg)</label>
           <input type="number" step="0.1" class="input-field" bind:value={formWeight} placeholder="如：4.5" />
         </div>
       </div>
@@ -198,8 +198,8 @@
   {#if $pets.length === 0}
     <div class="card text-center py-12">
       <div class="text-5xl mb-4">🐾</div>
-      <h3 class="font-semibold text-gray-700 mb-2">还没有添加宠物</h3>
-      <p class="text-sm text-gray-500 mb-4">添加你的宠物档案，追踪品种健康风险和就诊历史</p>
+      <h3 class="font-semibold text-warm-700 mb-2">还没有添加宠物</h3>
+      <p class="text-sm text-warm-500 mb-4">添加你的宠物档案，追踪品种健康风险和就诊历史</p>
       <button class="btn-primary" onclick={() => { showForm = true; resetForm(); }}>
         + 添加第一只宠物
       </button>
@@ -211,7 +211,7 @@
         <div
           class="card-hover cursor-pointer transition-all"
           class:ring-2={expandedId === pet.id}
-          class:ring-primary-300={expandedId === pet.id}
+          class:ring-brand-300={expandedId === pet.id}
           onclick={() => goto(`/pets/${pet.id}`)}
           role="button"
           tabindex="0"
@@ -222,21 +222,21 @@
             <div class="flex items-center gap-3">
               <span class="text-3xl">{pet.species === '猫' ? '🐱' : '🐶'}</span>
               <div>
-                <h3 class="font-semibold text-gray-900">{pet.name}</h3>
-                <div class="text-xs text-gray-500 space-x-2">
+                <h3 class="font-semibold text-warm-900">{pet.name}</h3>
+                <div class="text-xs text-warm-500 space-x-2">
                   {#if pet.breed}<span>{pet.breed}</span>{/if}
                   {#if pet.gender}<span>· {pet.gender}</span>{/if}
                 </div>
                 {#if pet.birth_date}
-                  <div class="text-xs text-gray-400">🎂 {pet.birth_date}</div>
+                  <div class="text-xs text-warm-400">🎂 {pet.birth_date}</div>
                 {/if}
                 {#if pet.weight_kg}
-                  <div class="text-xs text-gray-400">⚖️ {pet.weight_kg} kg</div>
+                  <div class="text-xs text-warm-400">⚖️ {pet.weight_kg} kg</div>
                 {/if}
               </div>
             </div>
             <div class="flex items-center gap-1">
-              <span class="text-xs text-gray-400">{expandedId === pet.id ? '▲' : '▼'}</span>
+              <span class="text-xs text-warm-400">{expandedId === pet.id ? '▲' : '▼'}</span>
               <button
                 class="btn-ghost text-red-400 hover:text-red-600 text-sm"
                 onclick={(e) => { e.stopPropagation(); handleDelete(pet.id); }}
@@ -248,47 +248,47 @@
 
           <!-- 展开后的花费看板 + 操作面板 -->
           {#if expandedId === pet.id}
-            <div class="mt-4 pt-4 border-t border-gray-100 space-y-4">
+            <div class="mt-4 pt-4 border-t border-warm-100 space-y-4">
               <!-- 花费看板 -->
               {#if spendingLoading}
-                <div class="text-center py-4 text-sm text-gray-400">加载花费数据...</div>
+                <div class="text-center py-4 text-sm text-warm-400">加载花费数据...</div>
               {:else if spendingData}
-                <div class="bg-gray-50 rounded-lg p-4 space-y-3">
-                  <h4 class="text-sm font-semibold text-gray-700">
+                <div class="bg-warm-50 rounded-lg p-4 space-y-3">
+                  <h4 class="text-sm font-semibold text-warm-700">
                     📊 {spendingData.year}年花费看板
                   </h4>
 
                   <!-- 三指标 -->
                   <div class="grid grid-cols-3 gap-3 text-center">
                     <div class="bg-white rounded p-2">
-                      <div class="text-lg font-bold text-gray-900">{formatCompact(spendingData.annualTotal)}</div>
-                      <div class="text-xs text-gray-500">年度总花费</div>
+                      <div class="text-lg font-bold text-warm-900">{formatCompact(spendingData.annualTotal)}</div>
+                      <div class="text-xs text-warm-500">年度总花费</div>
                     </div>
                     <div class="bg-white rounded p-2">
-                      <div class="text-lg font-bold text-gray-900">{spendingData.visitCount} 次</div>
-                      <div class="text-xs text-gray-500">就诊次数</div>
+                      <div class="text-lg font-bold text-warm-900">{spendingData.visitCount} 次</div>
+                      <div class="text-xs text-warm-500">就诊次数</div>
                     </div>
                     <div class="bg-white rounded p-2">
-                      <div class="text-lg font-bold text-gray-900">{formatCompact(spendingData.avgPerVisit)}</div>
-                      <div class="text-xs text-gray-500">单次均价</div>
+                      <div class="text-lg font-bold text-warm-900">{formatCompact(spendingData.avgPerVisit)}</div>
+                      <div class="text-xs text-warm-500">单次均价</div>
                     </div>
                   </div>
 
                   <!-- 月度趋势条 -->
                   {#if spendingData.annualTotal > 0}
                     <div>
-                      <div class="text-xs text-gray-500 mb-1">月度趋势</div>
+                      <div class="text-xs text-warm-500 mb-1">月度趋势</div>
                       <div class="flex gap-0.5 items-end h-10">
                         {#each spendingData.monthlyTrend as m}
                           {@const maxH = Math.max(...spendingData.monthlyTrend.map((x: any) => x.total), 1)}
                           <div
-                            class="flex-1 bg-primary-400 rounded-t-sm transition-all"
+                            class="flex-1 bg-brand-400 rounded-t-sm transition-all"
                             style="height: {Math.max((m.total / maxH) * 100, m.total > 0 ? 8 : 2)}%"
                             title="{m.month}月: ¥{m.total}"
                           ></div>
                         {/each}
                       </div>
-                      <div class="flex justify-between text-xs text-gray-400 mt-1">
+                      <div class="flex justify-between text-xs text-warm-400 mt-1">
                         <span>1月</span><span>6月</span><span>12月</span>
                       </div>
                     </div>
@@ -297,15 +297,15 @@
                   <!-- 费用构成 -->
                   {#if spendingData.categoryBreakdown.length > 0}
                     <div>
-                      <div class="text-xs text-gray-500 mb-1">费用构成</div>
+                      <div class="text-xs text-warm-500 mb-1">费用构成</div>
                       <div class="space-y-1">
                         {#each spendingData.categoryBreakdown.slice(0, 5) as cat}
                           <div class="flex items-center gap-2 text-xs">
-                            <span class="w-10 text-gray-500 flex-shrink-0">{cat.category}</span>
-                            <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div class="h-full bg-primary-500 rounded-full" style="width: {barWidth(cat.pct)}"></div>
+                            <span class="w-10 text-warm-500 flex-shrwarm-0">{cat.category}</span>
+                            <div class="flex-1 h-2 bg-warm-200 rounded-full overflow-hidden">
+                              <div class="h-full bg-brand-500 rounded-full" style="width: {barWidth(cat.pct)}"></div>
                             </div>
-                            <span class="text-gray-600 w-10 text-right">{cat.pct}%</span>
+                            <span class="text-warm-600 w-10 text-right">{cat.pct}%</span>
                           </div>
                         {/each}
                       </div>
@@ -315,28 +315,28 @@
                   <!-- 保险净支出 -->
                   {#if spendingData.insurance?.hasPolicy}
                     {@const ins = spendingData.insurance}
-                    <div class="border-t border-gray-200 pt-3">
-                      <div class="text-xs text-gray-500 mb-2">
+                    <div class="border-t border-warm-200 pt-3">
+                      <div class="text-xs text-warm-500 mb-2">
                         🛡️ 保险净支出（{ins.company} — {ins.productName}）
                       </div>
                       <div class="grid grid-cols-3 gap-2 text-center text-xs">
                         <div class="bg-white rounded p-1.5">
-                          <div class="font-semibold text-gray-800">{formatCompact(ins.totalSpent)}</div>
-                          <div class="text-gray-400">总花费</div>
+                          <div class="font-semibold text-warm-800">{formatCompact(ins.totalSpent)}</div>
+                          <div class="text-warm-400">总花费</div>
                         </div>
                         <div class="bg-white rounded p-1.5">
                           <div class="font-semibold text-emerald-600">{formatCompact(ins.estimatedPayout)}</div>
-                          <div class="text-gray-400">预计赔付</div>
+                          <div class="text-warm-400">预计赔付</div>
                         </div>
                         <div class="bg-white rounded p-1.5">
                           <div class="font-semibold text-amber-600">{formatCompact(ins.netOutOfPocket)}</div>
-                          <div class="text-gray-400">实际自付</div>
+                          <div class="text-warm-400">实际自付</div>
                         </div>
                       </div>
-                      <div class="mt-2 space-y-1 text-xs text-gray-500">
+                      <div class="mt-2 space-y-1 text-xs text-warm-500">
                         <div class="flex items-center gap-2">
                           <span class="w-16">保单利用率</span>
-                          <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div class="flex-1 h-1.5 bg-warm-200 rounded-full overflow-hidden">
                             <div class="h-full bg-emerald-500 rounded-full" style="width: {Math.min(ins.limitUsedPct, 100)}%"></div>
                           </div>
                           <span>{ins.limitUsedPct}%</span>
@@ -345,7 +345,7 @@
                       </div>
                     </div>
                   {:else if spendingData.annualTotal > 0}
-                    <div class="text-xs text-gray-400 text-center py-1">
+                    <div class="text-xs text-warm-400 text-center py-1">
                       💡 添加保单后可查看预计赔付和实际自付
                     </div>
                   {/if}
@@ -353,7 +353,7 @@
               {/if}
 
               <!-- 操作按钮 -->
-              <p class="text-xs text-gray-500">选择要为此宠物添加的内容：</p>
+              <p class="text-xs text-warm-500">选择要为此宠物添加的内容：</p>
               <div class="grid grid-cols-2 gap-2">
                 <button
                   class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100"
@@ -371,7 +371,7 @@
                 </button>
               </div>
               <button
-                class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-warm-500 hover:text-warm-700 hover:bg-warm-50 transition-colors"
                 onclick={(e) => { e.stopPropagation(); viewRecords(pet.id); }}
               >
                 📋 查看此宠物所有就诊记录

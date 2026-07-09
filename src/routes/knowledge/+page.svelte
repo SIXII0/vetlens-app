@@ -98,7 +98,7 @@
   }
 
   function getSourceInfo(source: string) {
-    return SOURCE_LABELS[source] || { label: source, icon: '📋', color: 'bg-gray-100 text-gray-700 border-gray-300' };
+    return SOURCE_LABELS[source] || { label: source, icon: '📋', color: 'bg-warm-100 text-warm-700 border-warm-300' };
   }
 
   async function aiReviewTerm(term: any) {
@@ -132,7 +132,7 @@
 
 <div class="max-w-4xl mx-auto space-y-6">
   <div class="flex items-center justify-between">
-    <h1 class="text-xl font-bold text-gray-900">📚 知识库审核</h1>
+    <h1 class="text-xl font-bold text-warm-900">📚 知识库审核</h1>
   </div>
 
   <!-- 统计卡片 -->
@@ -141,12 +141,12 @@
       {@const info = getSourceInfo(sc.source)}
       <button
         class="card text-center cursor-pointer transition-all border-2
-               {activeTab === sc.source ? 'ring-2 ring-primary-300 scale-[1.02]' : 'border-transparent hover:border-gray-200'}"
+               {activeTab === sc.source ? 'ring-2 ring-brand-300 scale-[1.02]' : 'border-transparent hover:border-warm-200'}"
         onclick={() => switchTab(sc.source as typeof activeTab)}
       >
         <div class="text-lg">{info.icon}</div>
         <div class="text-2xl font-bold mt-1">{sc.count}</div>
-        <div class="text-xs text-gray-500 mt-0.5">{info.label}</div>
+        <div class="text-xs text-warm-500 mt-0.5">{info.label}</div>
       </button>
     {/each}
   </div>
@@ -165,12 +165,12 @@
   </div>
 
   {#if searchResult}
-    <div class="bg-gray-50 rounded-lg p-4 text-sm">
+    <div class="bg-warm-50 rounded-lg p-4 text-sm">
       <div class="font-semibold mb-2">搜索结果: {searchResult.length} 条</div>
       {#each searchResult as item}
-        <div class="py-1 border-b border-gray-100 last:border-0">
+        <div class="py-1 border-b border-warm-100 last:border-0">
           <span class="font-medium">{item.name}</span>
-          <span class="text-gray-400 ml-2">{item.category}</span>
+          <span class="text-warm-400 ml-2">{item.category}</span>
         </div>
       {/each}
     </div>
@@ -183,7 +183,7 @@
       {#each filteredCategories as cat}
         <button
           class="px-2.5 py-1 rounded-full text-xs font-medium transition-colors
-                 {categoryFilter === cat ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+                 {categoryFilter === cat ? 'bg-brand-500 text-white' : 'bg-warm-100 text-warm-600 hover:bg-warm-200'}"
           onclick={() => categoryFilter = cat}
         >
           {cat}
@@ -192,19 +192,19 @@
     </div>
 
     <div class="flex items-center justify-between mb-3">
-      <h3 class="font-semibold text-gray-700">
+      <h3 class="font-semibold text-warm-700">
         {getSourceInfo(activeTab).icon} {getSourceInfo(activeTab).label}
-        <span class="text-gray-400 text-sm font-normal ml-2">{terms.length} 条</span>
+        <span class="text-warm-400 text-sm font-normal ml-2">{terms.length} 条</span>
       </h3>
       {#if activeTab !== 'builtin'}
-        <span class="text-xs text-gray-400">点击卡片展开详情，一键确认或删除</span>
+        <span class="text-xs text-warm-400">点击卡片展开详情，一键确认或删除</span>
       {/if}
     </div>
 
     {#if loading}
-      <div class="text-center py-12 text-gray-400">加载中...</div>
+      <div class="text-center py-12 text-warm-400">加载中...</div>
     {:else if terms.length === 0}
-      <div class="text-center py-12 text-gray-400">暂无术语</div>
+      <div class="text-center py-12 text-warm-400">暂无术语</div>
     {:else}
       <div class="space-y-2">
         {#each terms.filter((t: any) => categoryFilter === '全部' || (t.category || '其他') === categoryFilter) as term}
@@ -212,34 +212,34 @@
           <div
             class="card cursor-pointer hover:shadow-md transition-all"
             class:ring-2={expandedId === term.id}
-            class:ring-primary-300={expandedId === term.id}
+            class:ring-brand-300={expandedId === term.id}
             onclick={() => expandedId = expandedId === term.id ? null : term.id}
             role="button" tabindex="0"
             onkeydown={(e) => { if (e.key === 'Enter') expandedId = expandedId === term.id ? null : term.id; }}
           >
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2 flex-1 min-w-0">
-                <span class="font-medium text-gray-900 truncate">{term.name}</span>
-                <span class="text-xs px-1.5 py-0.5 rounded {term.category === '检查' ? 'bg-blue-100 text-blue-700' : term.category === '药品' ? 'bg-red-100 text-red-700' : term.category === '治疗' ? 'bg-amber-100 text-amber-700' : term.category === '手术' ? 'bg-purple-100 text-purple-700' : term.category === '耗材' ? 'bg-gray-100 text-gray-600' : term.category === '服务' ? 'bg-teal-100 text-teal-700' : term.category === '预防' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'} flex-shrink-0">{term.category || '其他'}</span>
+                <span class="font-medium text-warm-900 truncate">{term.name}</span>
+                <span class="text-xs px-1.5 py-0.5 rounded {term.category === '检查' ? 'bg-blue-100 text-blue-700' : term.category === '药品' ? 'bg-red-100 text-red-700' : term.category === '治疗' ? 'bg-amber-100 text-amber-700' : term.category === '手术' ? 'bg-purple-100 text-purple-700' : term.category === '耗材' ? 'bg-warm-100 text-warm-600' : term.category === '服务' ? 'bg-teal-100 text-teal-700' : term.category === '预防' ? 'bg-green-100 text-green-700' : 'bg-warm-100 text-warm-500'} flex-shrwarm-0">{term.category || '其他'}</span>
                 {#if term.aliases}
-                  <span class="text-xs text-gray-400 truncate hidden sm:inline">
+                  <span class="text-xs text-warm-400 truncate hidden sm:inline">
                     {typeof term.aliases === 'string' ? term.aliases.slice(0, 60) : String(term.aliases).slice(0, 60)}
                   </span>
                 {/if}
               </div>
-              <span class="text-xs text-gray-400 flex-shrink-0 ml-2">{expandedId === term.id ? '▲' : '▼'}</span>
+              <span class="text-xs text-warm-400 flex-shrwarm-0 ml-2">{expandedId === term.id ? '▲' : '▼'}</span>
             </div>
 
             <!-- 展开详情 -->
             {#if expandedId === term.id}
-              <div class="mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm">
+              <div class="mt-3 pt-3 border-t border-warm-100 space-y-2 text-sm">
                 {#if term.medical_explain}
-                  <div><span class="text-gray-400">医学解释：</span>{term.medical_explain}</div>
+                  <div><span class="text-warm-400">医学解释：</span>{term.medical_explain}</div>
                 {/if}
                 {#if term.plain_explain}
-                  <div><span class="text-gray-400">通俗解释：</span>{term.plain_explain}</div>
+                  <div><span class="text-warm-400">通俗解释：</span>{term.plain_explain}</div>
                 {/if}
-                <div class="flex gap-4 text-xs text-gray-400">
+                <div class="flex gap-4 text-xs text-warm-400">
                   {#if term.necessity_hint}<span>必要性：{term.necessity_hint}</span>{/if}
                   {#if term.reviewed_by}<span>审核人：{term.reviewed_by}</span>{/if}
                 </div>

@@ -327,27 +327,27 @@
     {#if step !== 'upload'}
       <button onclick={goBack} class="btn-ghost text-sm">← 返回</button>
     {/if}
-    <h1 class="text-xl font-bold text-gray-900">上传账单</h1>
+    <h1 class="text-xl font-bold text-warm-900">上传账单</h1>
   </div>
 
   <!-- 步骤指示器 -->
   <div class="flex items-center gap-2 text-sm">
-    <span class="inline-flex items-center gap-1 {step === 'upload' ? 'text-primary-600 font-semibold' : 'text-gray-400'}">
-      <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs {step === 'upload' ? 'bg-primary-600 text-white' : step !== 'upload' && step !== 'ocr' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}">
+    <span class="inline-flex items-center gap-1 {step === 'upload' ? 'text-brand-600 font-semibold' : 'text-warm-400'}">
+      <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs {step === 'upload' ? 'bg-brand-600 text-white' : step !== 'upload' && step !== 'ocr' ? 'bg-emerald-500 text-white' : 'bg-warm-200 text-warm-500'}">
         {step === 'upload' ? '1' : '✓'}
       </span>
       上传
     </span>
-    <span class="text-gray-300">——</span>
-    <span class="inline-flex items-center gap-1 {step === 'ocr' ? 'text-primary-600 font-semibold' : step === 'review' || step === 'analyzing' || step === 'result' ? 'text-gray-500' : 'text-gray-300'}">
-      <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs {step === 'ocr' ? 'bg-primary-600 text-white' : step === 'review' || step === 'analyzing' || step === 'result' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}">
+    <span class="text-warm-300">——</span>
+    <span class="inline-flex items-center gap-1 {step === 'ocr' ? 'text-brand-600 font-semibold' : step === 'review' || step === 'analyzing' || step === 'result' ? 'text-warm-500' : 'text-warm-300'}">
+      <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs {step === 'ocr' ? 'bg-brand-600 text-white' : step === 'review' || step === 'analyzing' || step === 'result' ? 'bg-emerald-500 text-white' : 'bg-warm-200 text-warm-500'}">
         {step === 'ocr' ? '2' : (step === 'review' || step === 'analyzing' || step === 'result') ? '✓' : '2'}
       </span>
       OCR/编辑
     </span>
-    <span class="text-gray-300">——</span>
-    <span class="inline-flex items-center gap-1 {step === 'analyzing' ? 'text-primary-600 font-semibold' : step === 'result' ? 'text-gray-500' : 'text-gray-300'}">
-      <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs {step === 'analyzing' ? 'bg-primary-600 text-white' : step === 'result' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}">
+    <span class="text-warm-300">——</span>
+    <span class="inline-flex items-center gap-1 {step === 'analyzing' ? 'text-brand-600 font-semibold' : step === 'result' ? 'text-warm-500' : 'text-warm-300'}">
+      <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs {step === 'analyzing' ? 'bg-brand-600 text-white' : step === 'result' ? 'bg-emerald-500 text-white' : 'bg-warm-200 text-warm-500'}">
         3
       </span>
       分析
@@ -364,9 +364,9 @@
   <!-- Step 1: 上传 -->
   {#if step === 'upload'}
     <div
-      class="card border-2 border-dashed border-gray-300 hover:border-primary-400 transition-colors cursor-pointer"
-      class:border-primary-400={dragOver}
-      class:bg-primary-50={dragOver}
+      class="card border-2 border-dashed border-warm-300 hover:border-brand-400 transition-colors cursor-pointer"
+      class:border-brand-400={dragOver}
+      class:bg-brand-50={dragOver}
       ondragover={(e) => { e.preventDefault(); dragOver = true; }}
       ondragleave={() => dragOver = false}
       ondrop={(e) => { e.preventDefault(); handleDrop(e); }}
@@ -384,8 +384,8 @@
       />
       <div class="text-center py-12">
         <div class="text-5xl mb-4">📸</div>
-        <h3 class="text-lg font-semibold text-gray-700 mb-2">点击或拖拽上传账单照片</h3>
-        <p class="text-sm text-gray-500">支持 JPG、PNG 格式 · 无需注册 · 数据存储在你的设备上</p>
+        <h3 class="text-lg font-semibold text-warm-700 mb-2">点击或拖拽上传账单照片</h3>
+        <p class="text-sm text-warm-500">支持 JPG、PNG 格式 · 无需注册 · 数据存储在你的设备上</p>
       </div>
     </div>
 
@@ -406,16 +406,16 @@
   <!-- Step 2: OCR 处理中 -->
   {#if step === 'ocr' && ocrLoading}
     <div class="card text-center py-12">
-      <div class="relative w-32 h-48 mx-auto mb-6 bg-gray-100 rounded-lg overflow-hidden">
+      <div class="relative w-32 h-48 mx-auto mb-6 bg-warm-100 rounded-lg overflow-hidden">
         {#if previewUrl}
           <img src={previewUrl} alt="预览" class="w-full h-full object-cover opacity-40" />
         {/if}
         <div class="absolute inset-0 flex items-center justify-center">
-          <div class="w-20 h-0.5 bg-primary-500 scan-line"></div>
+          <div class="w-20 h-0.5 bg-brand-500 scan-line"></div>
         </div>
       </div>
-      <h3 class="font-semibold text-gray-700 mb-1">正在识别账单...</h3>
-      <p class="text-sm text-gray-500">使用 {ocrEngine} 提取费用项目</p>
+      <h3 class="font-semibold text-warm-700 mb-1">正在识别账单...</h3>
+      <p class="text-sm text-warm-500">使用 {ocrEngine} 提取费用项目</p>
       {#if ocrError}
         <p class="text-xs text-amber-600 mt-2">{ocrError}</p>
       {/if}
@@ -435,15 +435,15 @@
       <!-- 基本信息 -->
       <div class="card grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">医院名称</label>
+          <label class="block text-xs font-medium text-warm-500 mb-1">医院名称</label>
           <input type="text" class="input-field" bind:value={hospitalName} placeholder="如：XX宠物医院" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">就诊日期</label>
+          <label class="block text-xs font-medium text-warm-500 mb-1">就诊日期</label>
           <input type="date" class="input-field" bind:value={visitDate} />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">所在城市</label>
+          <label class="block text-xs font-medium text-warm-500 mb-1">所在城市</label>
           <select class="input-field" bind:value={city}>
             <option value="北京">北京</option>
             <option value="上海">上海</option>
@@ -461,11 +461,11 @@
 
       <!-- 宠物选择（可选） -->
       <div class="card">
-        <label class="block text-xs font-medium text-gray-500 mb-2">关联宠物（可选）</label>
+        <label class="block text-xs font-medium text-warm-500 mb-2">关联宠物（可选）</label>
         <div class="flex gap-2 flex-wrap">
           <button
             class="px-3 py-1.5 rounded-lg text-sm border transition-colors
-                   {!$selectedPetId ? 'bg-primary-50 border-primary-300 text-primary-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}"
+                   {!$selectedPetId ? 'bg-brand-50 border-brand-300 text-brand-700' : 'border-warm-200 text-warm-600 hover:border-warm-300'}"
             onclick={() => selectedPetId.set(null)}
           >
             未指定
@@ -473,7 +473,7 @@
           {#each $pets as pet}
             <button
               class="px-3 py-1.5 rounded-lg text-sm border transition-colors
-                     {$selectedPetId === pet.id ? 'bg-primary-50 border-primary-300 text-primary-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}"
+                     {$selectedPetId === pet.id ? 'bg-brand-50 border-brand-300 text-brand-700' : 'border-warm-200 text-warm-600 hover:border-warm-300'}"
               onclick={() => selectedPetId.set(pet.id)}
             >
               {pet.name} ({pet.species})
@@ -485,9 +485,9 @@
       <!-- 费用项目编辑表 -->
       <div class="card">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="font-semibold text-gray-900">
+          <h3 class="font-semibold text-warm-900">
             费用项目
-            <span class="text-xs text-gray-400 font-normal ml-2">
+            <span class="text-xs text-warm-400 font-normal ml-2">
               {filteredItems.filter(it => it.name.trim() && it.amount > 0).length} 个有效项目
             </span>
           </h3>
@@ -495,25 +495,25 @@
         </div>
 
         <!-- 筛选工具栏 -->
-        <div class="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-100 flex-wrap">
+        <div class="flex items-center gap-3 mb-4 p-3 bg-warm-50 rounded-lg border border-warm-100 flex-wrap">
           <!-- 筛选模式 -->
-          <div class="flex items-center gap-1 bg-white rounded-md border border-gray-200 p-0.5">
+          <div class="flex items-center gap-1 bg-white rounded-md border border-warm-200 p-0.5">
             <button
               class="px-3 py-1.5 text-xs rounded font-medium transition-colors"
-              class:bg-primary-500={filterMode === 'items_only'}
+              class:bg-brand-500={filterMode === 'items_only'}
               class:text-white={filterMode === 'items_only'}
-              class:text-gray-500={filterMode !== 'items_only'}
-              class:hover:text-gray-700={filterMode !== 'items_only'}
+              class:text-warm-500={filterMode !== 'items_only'}
+              class:hover:text-warm-700={filterMode !== 'items_only'}
               onclick={() => filterMode = 'items_only'}
             >
               ✅ 仅费用项
             </button>
             <button
               class="px-3 py-1.5 text-xs rounded font-medium transition-colors"
-              class:bg-primary-500={filterMode === 'all'}
+              class:bg-brand-500={filterMode === 'all'}
               class:text-white={filterMode === 'all'}
-              class:text-gray-500={filterMode !== 'all'}
-              class:hover:text-gray-700={filterMode !== 'all'}
+              class:text-warm-500={filterMode !== 'all'}
+              class:hover:text-warm-700={filterMode !== 'all'}
               onclick={() => filterMode = 'all'}
             >
               📋 全部行
@@ -522,7 +522,7 @@
 
           <!-- 排序 -->
           <select
-            class="text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-600"
+            class="text-xs border border-warm-200 rounded-md px-2 py-1.5 bg-white text-warm-600"
             bind:value={sortBy}
           >
             <option value="original">按原始顺序</option>
@@ -560,7 +560,7 @@
         <div class="space-y-3">
           {#each filteredItems as item, i}
             <div class="flex items-center gap-3">
-              <span class="text-xs text-gray-400 w-6 text-right">{i + 1}</span>
+              <span class="text-xs text-warm-400 w-6 text-right">{i + 1}</span>
               <input
                 type="text"
                 class="input-field flex-1"
@@ -569,7 +569,7 @@
                 oninput={(e) => updateItemName(item._origIdx, (e.target as HTMLInputElement).value)}
               />
               <div class="relative w-32">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">¥</span>
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-warm-400 text-sm">¥</span>
                 <input
                   type="number"
                   step="0.01"
@@ -593,7 +593,7 @@
           {#if filteredCount > 0}
             <div class="text-center pt-2">
               <button
-                class="text-xs text-gray-400 hover:text-gray-600"
+                class="text-xs text-warm-400 hover:text-warm-600"
                 onclick={() => filterMode = 'all'}
               >
                 📋 显示全部 {editedItems.length} 行（含 {filteredCount} 个噪声行）
@@ -602,25 +602,25 @@
           {/if}
 
           {#if filteredItems.length === 0}
-            <div class="text-center py-4 text-sm text-gray-400">
+            <div class="text-center py-4 text-sm text-warm-400">
               未识别到费用项目。请切换为"全部行"模式查看 OCR 原始结果，或手动添加项目。
             </div>
           {/if}
         </div>
 
         <!-- 合计 -->
-        <div class="flex justify-end items-center gap-4 mt-4 pt-4 border-t border-gray-100">
-          <span class="text-sm text-gray-500">合计</span>
-          <span class="text-xl font-bold text-gray-900">{formatCurrency(totalAmount)}</span>
+        <div class="flex justify-end items-center gap-4 mt-4 pt-4 border-t border-warm-100">
+          <span class="text-sm text-warm-500">合计</span>
+          <span class="text-xl font-bold text-warm-900">{formatCurrency(totalAmount)}</span>
         </div>
       </div>
 
       <!-- 分析按钮 -->
       <div class="flex items-center justify-end gap-3">
-        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+        <label class="flex items-center gap-2 text-sm text-warm-600 cursor-pointer">
           <input type="checkbox" bind:checked={useLlm} class="rounded" />
           <span>🤖 AI 增强</span>
-          <span class="text-xs text-gray-400">（未知项目用 LLM 推断）</span>
+          <span class="text-xs text-warm-400">（未知项目用 LLM 推断）</span>
         </label>
         <button class="btn-secondary" onclick={goBack}>取消</button>
         <button

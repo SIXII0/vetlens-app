@@ -80,7 +80,7 @@
   });
 
   function scoreColor(s: number | null): string {
-    if (s === null) return 'text-gray-400';
+    if (s === null) return 'text-warm-400';
     if (s >= 80) return 'text-emerald-600'; else if (s >= 50) return 'text-amber-600';
     return 'text-red-600';
   }
@@ -89,7 +89,7 @@
     if (g === 'B') return 'bg-blue-100 text-blue-800';
     if (g === 'C') return 'bg-amber-100 text-amber-800';
     if (g === 'D') return 'bg-red-100 text-red-800';
-    return 'bg-gray-100 text-gray-500';
+    return 'bg-warm-100 text-warm-500';
   }
 
   const FIELDS = [
@@ -104,22 +104,22 @@
 </script>
 
 <div class="max-w-4xl mx-auto space-y-6">
-  <h1 class="text-xl font-bold text-gray-900">🩺 健康监测</h1>
+  <h1 class="text-xl font-bold text-warm-900">🩺 健康监测</h1>
 
   <div class="flex gap-2 flex-wrap">
     {#each $pets as pet}
-      <button class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border-2 {activePetId === pet.id ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-600 border-gray-200'}" onclick={() => activePetId = pet.id}>
+      <button class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border-2 {activePetId === pet.id ? 'bg-brand-500 text-white border-brand-500' : 'bg-white text-warm-600 border-warm-200'}" onclick={() => activePetId = pet.id}>
         {pet.species === '猫' ? '🐱' : '🐶'} {pet.name}
       </button>
     {/each}
   </div>
 
   {#if !activePetId}
-    <div class="card text-center py-12 text-gray-400">请先选择一只宠物</div>
+    <div class="card text-center py-12 text-warm-400">请先选择一只宠物</div>
   {:else}
-    <div class="flex gap-1 bg-gray-100 rounded-lg p-1">
-      <button class="flex-1 py-2 rounded-md text-sm font-medium transition-colors {activeTab==='input'?'bg-white shadow-sm text-gray-900':'text-gray-500'}" onclick={()=>activeTab='input'}>📝 录入数据</button>
-      <button class="flex-1 py-2 rounded-md text-sm font-medium transition-colors {activeTab==='trend'?'bg-white shadow-sm text-gray-900':'text-gray-500'}" onclick={()=>activeTab='trend'}>📈 趋势曲线</button>
+    <div class="flex gap-1 bg-warm-100 rounded-lg p-1">
+      <button class="flex-1 py-2 rounded-md text-sm font-medium transition-colors {activeTab==='input'?'bg-white shadow-sm text-warm-900':'text-warm-500'}" onclick={()=>activeTab='input'}>📝 录入数据</button>
+      <button class="flex-1 py-2 rounded-md text-sm font-medium transition-colors {activeTab==='trend'?'bg-white shadow-sm text-warm-900':'text-warm-500'}" onclick={()=>activeTab='trend'}>📈 趋势曲线</button>
     </div>
 
     {#if msg}
@@ -134,11 +134,11 @@
         </div>
         {#each [{t:'🫘 肾功能 (32%)',s:'kidney',n:2},{t:'🍬 血糖+胰腺 (28%)',s:'pancreas',n:2},{t:'🩸 血常规 (30%)',s:'cbc',n:3}] as sec}
           <div class="mb-6">
-            <h3 class="font-semibold text-gray-700 mb-3">{sec.t}</h3>
+            <h3 class="font-semibold text-warm-700 mb-3">{sec.t}</h3>
             <div class="grid grid-cols-2 gap-3">
               {#each FIELDS.filter(f=>f.sec===sec.s) as fld}
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">{fld.name}</label>
+                  <label class="block text-xs font-medium text-warm-500 mb-1">{fld.name}</label>
                   <input type="number" step="any" class="input-field" placeholder={fld.placeholder} bind:value={form[fld.key]} />
                 </div>
               {/each}
@@ -152,22 +152,22 @@
       {#if lastResult}
         <div class="card bg-gradient-to-br from-white to-gray-50">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold text-gray-700">最新评分 ({lastResult.test_date?.slice(0,10)})</h3>
+            <h3 class="font-semibold text-warm-700">最新评分 ({lastResult.test_date?.slice(0,10)})</h3>
             <span class="px-3 py-1 rounded-full text-sm font-bold {gradeColor(lastResult.grade||'')}">{lastResult.grade||'—'}</span>
           </div>
           <div class="flex items-center gap-4 mb-6">
             <div class="text-5xl font-bold {scoreColor(lastResult.overall_score)}">{lastResult.overall_score ?? '—'}</div>
-            <div class="text-sm text-gray-500">综合健康评分 /100</div>
+            <div class="text-sm text-warm-500">综合健康评分 /100</div>
           </div>
           <div class="space-y-3">
             {#each [{l:'肾功能',p:32,s:lastResult.kidney_score,c:'bg-amber-500'},{l:'血糖+胰腺',p:28,s:lastResult.pancreas_score,c:'bg-blue-500'},{l:'血常规',p:30,s:lastResult.cbc_score,c:'bg-emerald-500'}] as cat}
               <div class="flex items-center gap-3">
-                <span class="text-sm w-20 text-gray-600">{cat.l}</span>
-                <div class="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
+                <span class="text-sm w-20 text-warm-600">{cat.l}</span>
+                <div class="flex-1 h-4 bg-warm-100 rounded-full overflow-hidden">
                   {#if cat.s !== null}<div class="h-full {cat.c} rounded-full transition-all" style="width:{cat.s}%"></div>{/if}
                 </div>
                 <span class="text-sm font-semibold {scoreColor(cat.s)} w-10 text-right">{cat.s ?? '—'}</span>
-                <span class="text-xs text-gray-400 w-12 text-right">x{cat.p}%</span>
+                <span class="text-xs text-warm-400 w-12 text-right">x{cat.p}%</span>
               </div>
             {/each}
           </div>
@@ -176,10 +176,10 @@
 
       {#if history.length > 0}
         <div class="card">
-          <h3 class="font-semibold text-gray-700 mb-3">📈 趋势曲线</h3>
+          <h3 class="font-semibold text-warm-700 mb-3">📈 趋势曲线</h3>
           <div class="flex gap-2 mb-4">
             {#each [{k:'overall',l:'综合'},{k:'kidney',l:'肾功能'},{k:'pancreas',l:'血糖+胰腺'},{k:'cbc',l:'血常规'}] as opt}
-              <button class="px-3 py-1 rounded-full text-xs font-medium {selectedIndicator===opt.k?'bg-primary-500 text-white':'bg-gray-100 text-gray-600'}" onclick={()=>selectedIndicator=opt.k as any}>{opt.l}</button>
+              <button class="px-3 py-1 rounded-full text-xs font-medium {selectedIndicator===opt.k?'bg-brand-500 text-white':'bg-warm-100 text-warm-600'}" onclick={()=>selectedIndicator=opt.k as any}>{opt.l}</button>
             {/each}
           </div>
           {#if trendSvg}
@@ -198,20 +198,20 @@
               </svg>
             </div>
           {:else}
-            <div class="text-center py-8 text-gray-400 text-sm">至少需要2次记录才能生成趋势曲线</div>
+            <div class="text-center py-8 text-warm-400 text-sm">至少需要2次记录才能生成趋势曲线</div>
           {/if}
         </div>
       {/if}
 
       {#if history.length > 0}
         <div class="card">
-          <h3 class="font-semibold text-gray-700 mb-3">📋 历史记录</h3>
+          <h3 class="font-semibold text-warm-700 mb-3">📋 历史记录</h3>
           <div class="space-y-2">
             {#each history as h}
-              <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                <div><span class="text-sm font-medium text-gray-800">{h.test_date?.slice(0,10)}</span><span class="text-xs text-gray-400 ml-2">{h.species==='狗'?'🐶':'🐱'}</span></div>
+              <div class="flex items-center justify-between py-2 border-b border-warm-100 last:border-0">
+                <div><span class="text-sm font-medium text-warm-800">{h.test_date?.slice(0,10)}</span><span class="text-xs text-warm-400 ml-2">{h.species==='狗'?'🐶':'🐱'}</span></div>
                 <div class="flex items-center gap-3">
-                  <span class="text-xs text-gray-500">肾:{h.kidney_score??'—'} 胰:{h.pancreas_score??'—'} 血:{h.cbc_score??'—'}</span>
+                  <span class="text-xs text-warm-500">肾:{h.kidney_score??'—'} 胰:{h.pancreas_score??'—'} 血:{h.cbc_score??'—'}</span>
                   <span class="text-sm font-bold {scoreColor(h.overall_score)}">{h.overall_score??'—'}分</span>
                   <span class="px-1.5 py-0.5 rounded text-xs {gradeColor(h.grade||'')}">{h.grade||'—'}</span>
                   <button class="text-red-400 text-xs hover:text-red-600" onclick={()=>handleDelete(h.id)}>🗑️</button>
@@ -221,7 +221,7 @@
           </div>
         </div>
       {:else if !lastResult}
-        <div class="card text-center py-12 text-gray-400">暂无健康数据，请先录入</div>
+        <div class="card text-center py-12 text-warm-400">暂无健康数据，请先录入</div>
       {/if}
     {/if}
   {/if}

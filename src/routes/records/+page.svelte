@@ -41,23 +41,23 @@
 
 <div class="max-w-4xl mx-auto space-y-6">
   <div class="flex items-center justify-between">
-    <h1 class="text-xl font-bold text-gray-900">📋 就诊记录</h1>
+    <h1 class="text-xl font-bold text-warm-900">📋 就诊记录</h1>
     <a href="/upload" class="btn-primary text-sm">+ 新建分析</a>
   </div>
 
   {#if loading}
-    <div class="card text-center py-12 text-gray-500">加载中...</div>
+    <div class="card text-center py-12 text-warm-500">加载中...</div>
   {:else if records.length === 0}
     <div class="card text-center py-12">
       <div class="text-5xl mb-4">📋</div>
-      <h3 class="font-semibold text-gray-700 mb-2">暂无就诊记录</h3>
-      <p class="text-sm text-gray-500 mb-4">上传第一张宠物医院账单</p>
+      <h3 class="font-semibold text-warm-700 mb-2">暂无就诊记录</h3>
+      <p class="text-sm text-warm-500 mb-4">上传第一张宠物医院账单</p>
       <a href="/upload" class="btn-primary inline-block">开始分析</a>
     </div>
   {:else}
     <div class="space-y-3">
       {#each records as record}
-        <a href="/analysis/{record.id}" class="card-hover flex items-center gap-4 no-underline text-gray-900">
+        <a href="/analysis/{record.id}" class="card-hover flex items-center gap-4 no-underline text-warm-900">
           <span class="text-xl">
             {record.status === 'analyzed' ? '✅' : '📝'}
           </span>
@@ -65,19 +65,19 @@
             <div class="font-medium truncate">
               {record.hospital_name || '未知医院'}
               {#if record.hospital_city}
-                <span class="text-xs text-gray-400 ml-1">{record.hospital_city}</span>
+                <span class="text-xs text-warm-400 ml-1">{record.hospital_city}</span>
               {/if}
             </div>
-            <div class="text-xs text-gray-500">
+            <div class="text-xs text-warm-500">
               {formatDate(record.visit_date)}
               {#if record.visit_reason}
                 · {record.visit_reason}
               {/if}
             </div>
           </div>
-          <div class="text-right flex-shrink-0">
+          <div class="text-right flex-shrwarm-0">
             <div class="font-semibold">{formatCurrency(record.total_amount)}</div>
-            <div class="text-xs text-gray-400">{timeAgo(record.visit_date)}</div>
+            <div class="text-xs text-warm-400">{timeAgo(record.visit_date)}</div>
           </div>
           <button
             class="btn-ghost text-red-400 hover:text-red-600 text-sm px-2 ml-2"

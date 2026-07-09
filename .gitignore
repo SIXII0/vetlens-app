@@ -21,6 +21,9 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 
+# Claude Code agents (external skills)
+.agents/
+
 # Logs
 *.log
 npm-debug.log*

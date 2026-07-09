@@ -153,12 +153,12 @@
 </script>
 
 <div class="max-w-5xl mx-auto space-y-6">
-  <h1 class="text-xl font-bold text-gray-900">🏥 医院推荐</h1>
+  <h1 class="text-xl font-bold text-warm-900">🏥 医院推荐</h1>
 
   {#if amapKey}
     <!-- 位置选择 -->
     <div class="card">
-      <div class="text-xs text-gray-500 mb-2">📍 第一步：选择你想查看的位置</div>
+      <div class="text-xs text-warm-500 mb-2">📍 第一步：选择你想查看的位置</div>
       <div class="flex gap-2 flex-wrap mb-3">
         <button class="btn-primary text-sm {locating?'opacity-50':''}" onclick={locateMe} disabled={locating}>
           {locating ? '⏳ 定位中...' : '📍 自动定位'}
@@ -173,7 +173,7 @@
           {name:'武汉',lng:114.298,lat:30.584}
         ] as city}
           <button
-            class="px-2.5 py-1 rounded-full text-xs border transition-colors {currentCity === city.name ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}"
+            class="px-2.5 py-1 rounded-full text-xs border transition-colors {currentCity === city.name ? 'bg-brand-500 text-white border-brand-500' : 'bg-white text-warm-600 border-warm-200 hover:border-warm-400'}"
             onclick={async () => {
               currentCity = city.name;
               if (!amapReady) await initAmap([city.lng, city.lat]);
@@ -215,20 +215,20 @@
     </div>
 
     {#if loading}
-      <div class="text-center py-8 text-gray-400">搜索中...</div>
+      <div class="text-center py-8 text-warm-400">搜索中...</div>
     {:else if hospitals.length > 0}
-      <div class="text-sm text-gray-500">找到 {hospitals.length} 家医院 · 中心: {currentCenter}</div>
+      <div class="text-sm text-warm-500">找到 {hospitals.length} 家医院 · 中心: {currentCenter}</div>
       <div class="space-y-3">
         {#each hospitals as h, i}
-          <div id="hosp-{h.id}" class="card transition-all duration-500 {highlightId === h.id ? 'scale-[1.02] ring-2 ring-primary-400 shadow-lg bg-primary-50/30' : ''}">
+          <div id="hosp-{h.id}" class="card transition-all duration-500 {highlightId === h.id ? 'scale-[1.02] ring-2 ring-brand-400 shadow-lg bg-brand-50/30' : ''}">
             <div class="flex items-start gap-3">
-              <span class="text-lg font-bold text-primary-500 w-7">{i+1}</span>
+              <span class="text-lg font-bold text-brand-500 w-7">{i+1}</span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">
-                  <h3 class="font-semibold text-gray-900">{h.name}</h3>
-                  {#if h.distance}<span class="text-xs text-primary-500">{formatDist(h.distance)}</span>{/if}
+                  <h3 class="font-semibold text-warm-900">{h.name}</h3>
+                  {#if h.distance}<span class="text-xs text-brand-500">{formatDist(h.distance)}</span>{/if}
                 </div>
-                <div class="text-xs text-gray-500">{h.address}{#if h.phone} · 📞 {h.phone}{/if}</div>
+                <div class="text-xs text-warm-500">{h.address}{#if h.phone} · 📞 {h.phone}{/if}</div>
                 {#if h.rating}
                   <div class="text-xs text-amber-500 mt-0.5">⭐ {h.rating}</div>
                 {/if}
@@ -238,13 +238,13 @@
         {/each}
       </div>
     {:else}
-      <div class="card text-center py-12 text-gray-400">
+      <div class="card text-center py-12 text-warm-400">
         {amapReady ? '该范围内未找到宠物医院，试试扩大搜索范围或点击定位' : '点击"加载地图"开始'}
       </div>
     {/if}
   {:else}
     <!-- 无高德 key: 使用知识库数据库 -->
-    <div class="text-xs text-gray-400">💡 在 .env 配置 AMAP_WEB_KEY 开启地图模式</div>
-    <div class="card text-center py-12 text-gray-400">需要高德地图 API Key</div>
+    <div class="text-xs text-warm-400">💡 在 .env 配置 AMAP_WEB_KEY 开启地图模式</div>
+    <div class="card text-center py-12 text-warm-400">需要高德地图 API Key</div>
   {/if}
 </div>

@@ -39,7 +39,7 @@ export function priceLevelClass(level: string): string {
     case '合理': return 'text-emerald-600';
     case '略高': return 'text-amber-600';
     case '偏高': return 'text-red-600';
-    default: return 'text-gray-500';
+    default: return 'text-warm-500';
   }
 }
 

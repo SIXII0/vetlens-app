@@ -70,7 +70,7 @@
   {#if loading}
     <div class="card text-center py-12">
       <div class="text-3xl mb-3">🔄</div>
-      <p class="text-gray-500">加载报告...</p>
+      <p class="text-warm-500">加载报告...</p>
     </div>
   {:else if error}
     <div class="card text-center py-12">
@@ -84,8 +84,8 @@
       <div class="flex items-center gap-3 mb-3">
         <span class="text-2xl">{reportLabel(report.reportType).icon}</span>
         <div>
-          <h1 class="text-xl font-bold text-gray-900">{report.title}</h1>
-          <div class="text-sm text-gray-500">
+          <h1 class="text-xl font-bold text-warm-900">{report.title}</h1>
+          <div class="text-sm text-warm-500">
             {reportLabel(report.reportType).label}
             {#if report.petName && report.petName !== '待确认'}
               · 🐾 {report.petName}
@@ -121,7 +121,7 @@
       {/if}
 
       <!-- 操作栏 -->
-      <div class="flex gap-2 mt-4 pt-3 border-t border-gray-100">
+      <div class="flex gap-2 mt-4 pt-3 border-t border-warm-100">
         <button class="btn-secondary text-sm" onclick={downloadMarkdown}>
           📥 下载 MD
         </button>
@@ -139,14 +139,14 @@
 
     <!-- QA 详情 -->
     {#if report.qaResult?.checks?.length > 0}
-      <details class="card bg-gray-50 border border-gray-200">
-        <summary class="cursor-pointer text-sm font-medium text-gray-600">🔍 质检详情 (QA Checks)</summary>
+      <details class="card bg-warm-50 border border-warm-200">
+        <summary class="cursor-pointer text-sm font-medium text-warm-600">🔍 质检详情 (QA Checks)</summary>
         <div class="mt-3 space-y-2">
           {#each report.qaResult.checks as check}
-            <div class="flex items-center gap-2 p-2 bg-white rounded border border-gray-100">
+            <div class="flex items-center gap-2 p-2 bg-white rounded border border-warm-100">
               <span>{check.passed ? '✅' : '❌'}</span>
-              <span class="text-sm text-gray-700">{check.rule}</span>
-              <span class="text-xs text-gray-500 flex-1 text-right">{check.detail}</span>
+              <span class="text-sm text-warm-700">{check.rule}</span>
+              <span class="text-xs text-warm-500 flex-1 text-right">{check.detail}</span>
             </div>
           {/each}
         </div>

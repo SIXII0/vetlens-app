@@ -3,90 +3,71 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-gray-50 text-gray-900 antialiased;
-  }
+  body { background: #fafaf9; color: #3d3934; -webkit-font-smoothing: antialiased; }
+  ::selection { background: #fad2b5; color: #5c2e18; }
 }
 
 @layer components {
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+    @apply bg-white rounded-2xl p-4;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.06);
+    border: 1px solid rgb(232 228 223 / 0.6);
   }
-
   .card-hover {
-    @apply card hover:shadow-md hover:border-gray-200 transition-all duration-200;
+    @apply card hover:-translate-y-0.5;
+    transition: all 0.2s ease;
   }
+  .card-hover:hover { box-shadow: 0 4px 16px rgb(0 0 0 / 0.1); }
 
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-lg font-medium
-           hover:bg-primary-700 active:bg-primary-800 transition-colors
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white;
+    background: #e07b3c;
+    transition: background 0.15s, transform 0.1s;
   }
+  .btn-primary:hover { background: #c4652e; }
+  .btn-primary:active { background: #9e4f25; transform: scale(0.97); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary:disabled:active { transform: none; }
 
   .btn-secondary {
-    @apply bg-white text-gray-700 px-4 py-2 rounded-lg font-medium border border-gray-300
-           hover:bg-gray-50 active:bg-gray-100 transition-colors;
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium;
+    background: white; color: #524d47;
+    border: 1px solid #e8e4df;
+    transition: all 0.15s;
   }
+  .btn-secondary:hover { background: #fafaf9; }
+  .btn-secondary:active { transform: scale(0.97); }
 
   .btn-ghost {
-    @apply text-gray-600 px-3 py-2 rounded-lg font-medium
-           hover:bg-gray-100 active:bg-gray-200 transition-colors;
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium;
+    color: #6b655e; transition: background 0.15s;
   }
+  .btn-ghost:hover { background: #f5f3f0; }
+  .btn-ghost:active { background: #e8e4df; }
 
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm
-           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-           placeholder:text-gray-400;
+    @apply w-full px-3 py-2 rounded-xl text-sm bg-white;
+    border: 1px solid #e8e4df;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
+  .input-field::placeholder { color: #b8b0a6; }
+  .input-field:focus { outline: none; box-shadow: 0 0 0 3px rgb(224 123 60 / 0.25); border-color: #ed965c; }
 
-  .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
-  }
+  .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold; }
+  .badge-green { background: #d1fae5; color: #047857; }
+  .badge-amber { background: #fef3c7; color: #a16207; }
+  .badge-red   { background: #fee2e2; color: #b91c1c; }
+  .badge-blue  { background: #dbeafe; color: #1d4ed8; }
+  .badge-gray  { background: #e8e4df; color: #6b655e; }
 
-  .badge-green {
-    @apply badge bg-emerald-100 text-emerald-800;
-  }
-
-  .badge-amber {
-    @apply badge bg-amber-100 text-amber-800;
-  }
-
-  .badge-red {
-    @apply badge bg-red-100 text-red-800;
-  }
-
-  .badge-blue {
-    @apply badge bg-blue-100 text-blue-800;
-  }
-
-  .badge-gray {
-    @apply badge bg-gray-100 text-gray-700;
-  }
+  .skeleton { @apply rounded-lg animate-pulse; background: #e8e4df; }
 }
 
-/* OCR 进度动画 */
-@keyframes scan-line {
-  0% { top: 0; }
-  100% { top: 100%; }
-}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d6d0c8; border-radius: 9999px; }
 
-.scan-line {
-  animation: scan-line 2s ease-in-out infinite;
-}
-
-/* 自定义滚动条 */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400;
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .tabular-nums  { font-variant-numeric: tabular-nums; }
 }

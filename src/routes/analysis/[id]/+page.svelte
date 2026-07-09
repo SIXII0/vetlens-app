@@ -189,7 +189,7 @@
   {#if loading}
     <div class="card text-center py-12">
       <div class="text-3xl mb-3">🔄</div>
-      <p class="text-gray-500">加载分析结果...</p>
+      <p class="text-warm-500">加载分析结果...</p>
     </div>
   {:else if error}
     <div class="card text-center py-12">
@@ -203,12 +203,12 @@
       <div class="flex flex-col md:flex-row justify-between gap-4">
         <div>
           <div class="flex items-center gap-2 mb-1">
-            <h1 class="text-xl font-bold text-gray-900">
+            <h1 class="text-xl font-bold text-warm-900">
               {record.hospital_name || '未知医院'}
             </h1>
             <span class="badge-blue">已解读</span>
           </div>
-          <div class="text-sm text-gray-500 space-x-3">
+          <div class="text-sm text-warm-500 space-x-3">
             <span>📅 {formatDate(record.visit_date)}</span>
             {#if record.hospital_city}
               <span>📍 {record.hospital_city}</span>
@@ -219,33 +219,33 @@
           </div>
         </div>
         <div class="text-right">
-          <div class="text-xs text-gray-500 mb-1">总费用</div>
-          <div class="text-3xl font-bold text-gray-900">{formatCurrency(record.total_amount)}</div>
-          <div class="text-xs text-gray-400">{items.length} 个项目</div>
+          <div class="text-xs text-warm-500 mb-1">总费用</div>
+          <div class="text-3xl font-bold text-warm-900">{formatCurrency(record.total_amount)}</div>
+          <div class="text-xs text-warm-400">{items.length} 个项目</div>
         </div>
       </div>
     </div>
 
     <!-- Tab 切换 -->
-    <div class="flex border-b border-gray-200 gap-1">
+    <div class="flex border-b border-warm-200 gap-1">
       <button
         class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-[1px]"
-        class:border-primary-500={activeTab === 'items'}
-        class:text-primary-600={activeTab === 'items'}
+        class:border-brand-500={activeTab === 'items'}
+        class:text-brand-600={activeTab === 'items'}
         class:border-transparent={activeTab !== 'items'}
-        class:text-gray-500={activeTab !== 'items'}
-        class:hover:text-gray-700={activeTab !== 'items'}
+        class:text-warm-500={activeTab !== 'items'}
+        class:hover:text-warm-700={activeTab !== 'items'}
         onclick={() => activeTab = 'items'}
       >
         📋 逐项解读
       </button>
       <button
         class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-[1px]"
-        class:border-primary-500={activeTab === 'report'}
-        class:text-primary-600={activeTab === 'report'}
+        class:border-brand-500={activeTab === 'report'}
+        class:text-brand-600={activeTab === 'report'}
         class:border-transparent={activeTab !== 'report'}
-        class:text-gray-500={activeTab !== 'report'}
-        class:hover:text-gray-700={activeTab !== 'report'}
+        class:text-warm-500={activeTab !== 'report'}
+        class:hover:text-warm-700={activeTab !== 'report'}
         onclick={() => activeTab = 'report'}
       >
         📄 综合报告
@@ -261,27 +261,27 @@
       {@const unknownCount = items.filter((it: any) => it.is_unknown).length}
       {@const highPriceCount = items.filter((it: any) => it.price_level === '偏高' || it.price_level === '略高').length}
 
-      <div class="card bg-gray-50 border border-gray-200">
+      <div class="card bg-warm-50 border border-warm-200">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div>
-            <div class="text-lg font-bold text-gray-900">{items.length}</div>
-            <div class="text-xs text-gray-500">费用项目</div>
+            <div class="text-lg font-bold text-warm-900">{items.length}</div>
+            <div class="text-xs text-warm-500">费用项目</div>
           </div>
           <div>
             <div class="text-lg font-bold text-emerald-600">{matchedCount}</div>
-            <div class="text-xs text-gray-500">知识库匹配</div>
+            <div class="text-xs text-warm-500">知识库匹配</div>
           </div>
           <div>
-            <div class="text-lg font-bold" class:text-amber-600={unknownCount > 0} class:text-gray-400={unknownCount === 0}>
+            <div class="text-lg font-bold" class:text-amber-600={unknownCount > 0} class:text-warm-400={unknownCount === 0}>
               {unknownCount}
             </div>
-            <div class="text-xs text-gray-500">未识别项目</div>
+            <div class="text-xs text-warm-500">未识别项目</div>
           </div>
           <div>
             <div class="text-lg font-bold" class:text-amber-600={highPriceCount > 0} class:text-emerald-600={highPriceCount === 0}>
               {highPriceCount}
             </div>
-            <div class="text-xs text-gray-500">价格偏高</div>
+            <div class="text-xs text-warm-500">价格偏高</div>
           </div>
         </div>
       </div>
@@ -289,12 +289,12 @@
 
     <!-- 逐项解读 -->
     <div class="space-y-3">
-      <h2 class="text-lg font-semibold text-gray-900">📋 逐项解读</h2>
+      <h2 class="text-lg font-semibold text-warm-900">📋 逐项解读</h2>
 
       {#if items.length === 0}
         <div class="card text-center py-8">
           <div class="text-3xl mb-2">📝</div>
-          <p class="text-sm text-gray-500">暂无分析项目。请确认账单数据已正确录入。</p>
+          <p class="text-sm text-warm-500">暂无分析项目。请确认账单数据已正确录入。</p>
         </div>
       {/if}
 
@@ -304,7 +304,7 @@
             <div class="flex-1 min-w-0">
               <!-- 标题行 -->
               <div class="flex items-center gap-2 mb-2 flex-wrap">
-                <span class="text-sm font-semibold text-gray-900">{item.raw_name}</span>
+                <span class="text-sm font-semibold text-warm-900">{item.raw_name}</span>
                 {#if item.category}
                   <span class="badge-gray">{item.category}</span>
                 {/if}
@@ -321,7 +321,7 @@
 
               <!-- 解释 -->
               {#if item.explanation}
-                <div class="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                <div class="text-sm text-warm-600 leading-relaxed whitespace-pre-line">
                   {item.explanation}
                 </div>
               {/if}
@@ -335,12 +335,12 @@
             </div>
 
             <!-- 金额 -->
-            <div class="text-right flex-shrink-0">
-              <div class="text-lg font-bold {isPriceHigh(item) ? 'text-amber-600' : 'text-gray-900'}">
+            <div class="text-right flex-shrwarm-0">
+              <div class="text-lg font-bold {isPriceHigh(item) ? 'text-amber-600' : 'text-warm-900'}">
                 {formatCurrency(printedAmount(item))}
               </div>
               {#if item.confidence != null}
-                <div class="text-xs text-gray-400">
+                <div class="text-xs text-warm-400">
                   匹配置信度: {(item.confidence * 100).toFixed(0)}%
                 </div>
               {/if}
@@ -353,24 +353,24 @@
     <!-- 费用分布 -->
     {#if items.length > 0}
       <div class="card">
-        <h3 class="font-semibold text-gray-900 mb-4">📊 费用构成</h3>
+        <h3 class="font-semibold text-warm-900 mb-4">📊 费用构成</h3>
         <div class="space-y-2">
           {#each categories as { cat, amt, pct }}
             <div class="flex items-center gap-3">
-              <span class="text-sm text-gray-600 w-16">{cat}</span>
-              <div class="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+              <span class="text-sm text-warm-600 w-16">{cat}</span>
+              <div class="flex-1 h-3 bg-warm-100 rounded-full overflow-hidden">
                 <div
                   class="h-full rounded-full transition-all"
-                  class:bg-primary-500={cat === '检查'}
+                  class:bg-brand-500={cat === '检查'}
                   class:bg-emerald-500={cat === '药品'}
                   class:bg-amber-500={cat === '手术'}
                   class:bg-purple-500={cat === '耗材'}
-                  class:bg-gray-400={cat === '其他' || cat === '处置'}
+                  class:bg-warm-400={cat === '其他' || cat === '处置'}
                   style="width: {pct}%"
                 ></div>
               </div>
-              <span class="text-sm text-gray-900 font-medium w-24 text-right">{formatCurrency(amt)}</span>
-              <span class="text-xs text-gray-400 w-12 text-right">{pct}%</span>
+              <span class="text-sm text-warm-900 font-medium w-24 text-right">{formatCurrency(amt)}</span>
+              <span class="text-xs text-warm-400 w-12 text-right">{pct}%</span>
             </div>
           {/each}
         </div>
@@ -381,30 +381,30 @@
     {#if hospitals.length > 0}
       <div class="card">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900">
+          <h3 class="font-semibold text-warm-900">
             🏥 {record.hospital_city || ''}附近好评医院
           </h3>
         </div>
-        <p class="text-xs text-gray-500 mb-4">
+        <p class="text-xs text-warm-500 mb-4">
           以下医院基于价格透明度和用户评价综合推荐，数据来自公开信息，仅供参考
         </p>
         <div class="space-y-3">
           {#each hospitals.slice(0, showAllHospitals ? 10 : 3) as h}
-            <div class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+            <div class="flex items-center gap-4 p-3 bg-warm-50 rounded-lg">
               <div class="flex-1">
-                <div class="font-medium text-sm text-gray-900">{h.name}</div>
-                <div class="text-xs text-gray-500">
+                <div class="font-medium text-sm text-warm-900">{h.name}</div>
+                <div class="text-xs text-warm-500">
                   {h.type || ''} · {h.address || ''}
                 </div>
               </div>
               <div class="flex items-center gap-4 text-sm">
                 <div class="text-center">
                   <div class="text-amber-500 font-semibold">⭐ {h.rating ?? '—'}</div>
-                  <div class="text-xs text-gray-400">用户评分</div>
+                  <div class="text-xs text-warm-400">用户评分</div>
                 </div>
                 <div class="text-center">
                   <div class="text-emerald-600 font-semibold">💰 {h.transparency_score ?? '—'}</div>
-                  <div class="text-xs text-gray-400">价格透明</div>
+                  <div class="text-xs text-warm-400">价格透明</div>
                 </div>
                 <span class="badge text-xs">
                   {h.price_level === '低' ? '经济型' : h.price_level === '高' ? '高端' : '中等'}
@@ -478,8 +478,8 @@
         <!-- 未生成报告 -->
         <div class="card text-center py-12">
           <div class="text-4xl mb-4">📄</div>
-          <h3 class="text-lg font-semibold text-gray-800 mb-2">综合报告</h3>
-          <p class="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+          <h3 class="text-lg font-semibold text-warm-800 mb-2">综合报告</h3>
+          <p class="text-sm text-warm-500 mb-6 max-w-md mx-auto">
             报告将生成完整叙事结构，包含费用来源、逐项解读、合理性分析和后续建议，
             并以 Markdown 格式输出，支持下载和打印。
           </p>
@@ -498,7 +498,7 @@
             {reportLoading ? '⏳ 生成中...' : '✨ 生成报告'}
           </button>
 
-          <p class="text-xs text-gray-400 mt-3">
+          <p class="text-xs text-warm-400 mt-3">
             基于 pet-vault-skill 报告编排引擎生成
           </p>
         </div>
