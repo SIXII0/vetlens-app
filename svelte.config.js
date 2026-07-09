@@ -16,11 +16,15 @@ const config = {
     csrf: {
       checkOrigin: false
     },
-    // Allow all origins for local Docker deployment
     csp: {
       directives: {
-        'script-src': ['self', 'wasm-unsafe-eval'],
-        'worker-src': ['self', 'blob:'],
+        'default-src': ['self', '*.amap.com', '*.autonavi.com', 'fonts.googleapis.com', 'fonts.gstatic.com'],
+        'script-src': ['self', 'unsafe-inline', 'unsafe-eval', 'wasm-unsafe-eval', '*.amap.com', '*.autonavi.com', 'blob:'],
+        'worker-src': ['self', 'blob:', '*.amap.com'],
+        'connect-src': ['self', '*.amap.com', '*.autonavi.com', 'blob:', 'data:', '*'],
+        'img-src': ['self', 'data:', 'blob:', '*'],
+        'style-src': ['self', 'unsafe-inline', '*'],
+        'font-src': ['self', 'data:', '*'],
       }
     }
   }

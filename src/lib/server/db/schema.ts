@@ -191,4 +191,32 @@ CREATE TRIGGER IF NOT EXISTS kb_terms_au AFTER UPDATE ON kb_terms BEGIN
   INSERT INTO kb_terms_fts(rowid, name, aliases, plain_explain)
   VALUES (new.rowid, new.name, new.aliases, new.plain_explain);
 END;
+
+-- 健康评分记录
+CREATE TABLE IF NOT EXISTS health_scores (
+  id            TEXT PRIMARY KEY,
+  pet_id        TEXT REFERENCES pets(id) ON DELETE CASCADE,
+  test_date     TEXT NOT NULL,
+  species       TEXT NOT NULL DEFAULT '猫',
+  -- 肾功能 (32%)
+  bun           REAL,   -- 尿素氮 mmol/L
+  crea          REAL,   -- 肌酐 μmol/L
+  -- 血糖+胰腺 (28%)
+  glu           REAL,   -- 血糖 mmol/L
+  amy           REAL,   -- 淀粉酶 U/L (猫) / 胰脂肪酶 (狗)
+  -- 血常规 (30%)
+  wbc           REAL,   -- 白细胞 10^9/L
+  rbc           REAL,   -- 红细胞 10^12/L
+  hct           REAL,   -- 红细胞比容 %
+  -- 评分结果
+  kidney_score      REAL,  -- 肾功能得分 0-100
+  pancreas_score    REAL,  -- 血糖+胰腺得分 0-100
+  cbc_score         REAL,  -- 血常规得分 0-100
+  overall_score     REAL,  -- 加权综合得分 0-100
+  grade              TEXT,  -- A+/A/B/C/D
+  notes         TEXT,
+  created_at    TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_health_pet ON health_scores(pet_id);
+CREATE INDEX IF NOT EXISTS idx_health_date ON health_scores(test_date);
 `;
