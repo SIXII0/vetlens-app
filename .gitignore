@@ -17,9 +17,7 @@ Thumbs.db
 .idea/
 
 # Database (local user data, should not be in git)
-data/*.db
-data/*.db-shm
-data/*.db-wal
+
 
 # Claude Code agents (external skills)
 .agents/
