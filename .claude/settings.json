@@ -37,7 +37,13 @@
       "Bash(curl -s -X POST \"http://localhost:3000/api/health-scores\" -H \"Content-Type: application/json\" -d \"{\\\\\"petId\\\\\":\\\\\"c0ed28cf-d6cf-461a-b9e0-7231fd07159e\\\\\",\\\\\"testDate\\\\\":\\\\\"2026-07-10\\\\\",\\\\\"species\\\\\":\\\\\"猫\\\\\",\\\\\"bun\\\\\":8.5,\\\\\"crea\\\\\":140,\\\\\"glu\\\\\":5.5,\\\\\"amy\\\\\":950,\\\\\"wbc\\\\\":11,\\\\\"rbc\\\\\":7.5,\\\\\"hct\\\\\":34}\")",
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d\\);console.log\\('综合:',j.overallScore,'分','等级:',j.grade\\);j.categories.forEach\\(c=>console.log\\(c.name,'权重'+c.weight+'%:',c.totalScore,'分'\\)\\);if\\(j.warnings?.length\\)console.log\\('⚠️:',j.warnings.join\\(';'\\)\\)}catch\\(e\\){console.log\\('RAW ERR:',d.slice\\(0,300\\)\\)}}\\)\")",
       "Bash(awk 'NR>=75 && NR<=95' \"f:/Users/宋泽锋/Desktop/Pet/应用端模拟/vetlens-app/src/routes/api/health-scores/+server.ts\")",
-      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"PRAGMA table_info\\(health_scores\\);\")"
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"PRAGMA table_info\\(health_scores\\);\")",
+      "Bash(find \"F:\\\\Users\\\\宋泽锋\\\\Desktop\\\\Pet\\\\PETLENS2\\\\PETLENS2\\\\应用端模拟\\\\vetlens-app\\\\.claude\\\\skills\\\\pet-vault-skill\" -type f -not -path \"*/node_modules/*\" -not -path \"*/.git/*\" 2>&1 | sort > /tmp/v2_skill.txt && find \"F:\\\\Users\\\\宋泽锋\\\\Desktop\\\\Pet\\\\应用端模拟\\\\vetlens-app\\\\.claude\\\\skills\\\\pet-vault-skill\" -type f -not -path \"*/node_modules/*\" -not -path \"*/.git/*\" 2>&1 | sort > /tmp/curr_skill.txt && diff /tmp/v2_skill.txt /tmp/curr_skill.txt 2>&1 | head -120)",
+      "Bash(python -c ' *)",
+      "Read(//c/Users/宋泽锋/AppData/Local/Temp/**)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }

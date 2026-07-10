@@ -4,14 +4,26 @@ import { getDb } from '$lib/server/db/index';
 import { v4 as uuid } from 'uuid';
 
 export const GET: RequestHandler = async ({ url }) => {
-  const petId = url.searchParams.get('petId');
-  const status = url.searchParams.get('status'); // upcoming/done/overdue
-  if (!petId) return json({ error: 'petId required' }, { status: 400 });
-
   const db = getDb();
-  let q = 'SELECT * FROM vaccine_schedule WHERE pet_id = ?';
-  const params: any[] = [petId];
-  if (status) { q += ' AND status = ?'; params.push(status); }
+  const id = url.searchParams.get('id');
+  const petId = url.searchParams.get('petId');
+  const status = url.searchParams.get('status');
+
+  // 按 ID 查询单条
+  if (id) {
+    const record = db.prepare('SELECT * FROM vaccine_schedule WHERE id = ?').get(id);
+    if (!record) return json({ error: 'not found' }, { status: 404 });
+    return json(record);
+  }
+
+  const conditions: string[] = [];
+  const params: any[] = [];
+
+  if (petId) { conditions.push('pet_id = ?'); params.push(petId); }
+  if (status) { conditions.push('status = ?'); params.push(status); }
+
+  let q = 'SELECT * FROM vaccine_schedule';
+  if (conditions.length > 0) q += ' WHERE ' + conditions.join(' AND ');
   q += ' ORDER BY next_date ASC LIMIT 50';
 
   // Auto-update overdue status

@@ -13,7 +13,20 @@ import argparse, json, sys
 from pathlib import Path
 from datetime import datetime
 
-SKILL_SCRIPTS = Path(__file__).resolve().parent.parent.parent.parent.parent / ".claude" / "skills" / "pet-vault-skill" / "scripts"
+# pet-vault-skill 安装位置：优先查找 Codex skills 目录，然后是 .claude/skills
+def find_skill_scripts() -> Path:
+    """查找 pet-vault-skill 的 scripts 目录"""
+    candidates = [
+        Path.home() / ".codex" / "skills" / "pet-vault-skill" / "scripts",
+        Path.home() / ".agents" / "skills" / "pet-vault-skill" / "scripts",
+        Path(__file__).resolve().parent.parent.parent.parent.parent / ".claude" / "skills" / "pet-vault-skill" / "scripts",
+    ]
+    for dir in candidates:
+        if dir.exists():
+            return dir
+    return candidates[0]  # fallback
+
+SKILL_SCRIPTS = find_skill_scripts()
 sys.path.insert(0, str(SKILL_SCRIPTS))
 
 from petvault_core import (
@@ -78,7 +91,7 @@ def build_materials_index(data: dict) -> dict:
         "id": "mat_001", "type": "bill",
         "pet_name": p if p != "待确认" else None,
         "clinic": h or None, "date": d or None,
-        "source_file": "bill_data.md",
+        "source_file": "宠物医疗账单",
         "raw_path": "", "cleaned_markdown_path": "",
         "confidence": 0.95, "status": "extracted", "text": text,
     }]
@@ -95,7 +108,7 @@ def build_materials_index(data: dict) -> dict:
             "id": "mat_000", "type": "pet_profile",
             "pet_name": p if p != "待确认" else None,
             "clinic": None, "date": None,
-            "source_file": "pet_profile.md",
+            "source_file": "宠物基础档案",
             "raw_path": "", "cleaned_markdown_path": "",
             "confidence": 0.99, "status": "extracted", "text": pt,
         })

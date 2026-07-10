@@ -252,4 +252,32 @@ CREATE TABLE IF NOT EXISTS medication_reminders (
   created_at    TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_med_pet ON medication_reminders(pet_id);
+
+-- 聊天会话
+CREATE TABLE IF NOT EXISTS chat_sessions (
+  id TEXT PRIMARY KEY,
+  pet_id TEXT,
+  analysis_id TEXT,
+  record_id TEXT,
+  title TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  metadata TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_analysis ON chat_sessions(analysis_id);
+
+-- 聊天消息
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  intent TEXT,
+  safety_json TEXT,
+  sources_json TEXT,
+  actions_json TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY(session_id) REFERENCES chat_sessions(id)
+);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id);
 `;

@@ -102,10 +102,20 @@ function runQa(md: string, type: ReportType, items?: AnalyzedItem[]): QaResult {
   const found = FORBIDDEN_TERMS.filter(t => md.includes(t));
   checks.push({ rule:'禁止术语', passed:found.length===0,
     detail:found.length===0?'通过':`发现: ${found.join(',')}` });
-  for (const s of ['事实与材料','整理结果','待确认','后续建议']) {
-    const ok = md.includes(`## ${s}`);
-    checks.push({ rule:`章节:${s}`, passed:ok, detail:ok?'已包含':'缺失' });
-    if (!ok) warnings.push(`缺少必要章节: ${s}`);
+
+  // 根据报告类型检查不同的章节要求
+  if (type === 'bill_explain') {
+    for (const s of ['费用分类总览','已识别项目解释','本次就诊档案卡','后续建议']) {
+      const ok = md.includes(`## ${s}`);
+      checks.push({ rule:`章节:${s}`, passed:ok, detail:ok?'已包含':'缺失' });
+      if (!ok) warnings.push(`缺少必要章节: ${s}`);
+    }
+  } else {
+    for (const s of ['使用材料','事实','整理结果','待确认','后续建议']) {
+      const ok = md.includes(`## ${s}`);
+      checks.push({ rule:`章节:${s}`, passed:ok, detail:ok?'已包含':'缺失' });
+      if (!ok) warnings.push(`缺少必要章节: ${s}`);
+    }
   }
   if (type!=='clinic_client_summary') {
     const ok = md.includes('医疗免责声明');
@@ -135,12 +145,52 @@ function runQa(md: string, type: ReportType, items?: AnalyzedItem[]): QaResult {
 // ---- 工具 ----
 
 function fmt(n: number): string { return `¥${n.toFixed(2)}`; }
+function pct(part: number, total: number): string { return total > 0 ? `${(part/total*100).toFixed(1)}%` : '—'; }
 function catGroup(items: AnalyzedItem[]): Record<string, AnalyzedItem[]> {
   const g: Record<string, AnalyzedItem[]> = {};
   for (const i of items) { const c = i.category||'其他'; (g[c]??=[]).push(i); }
   return g;
 }
 function isHighPrice(i: AnalyzedItem) { return i.priceAssessment?.level==='偏高'||i.priceAssessment?.level==='略高'; }
+function calcAge(birthDate?: string): string {
+  if (!birthDate) return '';
+  try {
+    const b = new Date(birthDate);
+    const now = new Date();
+    const years = now.getFullYear() - b.getFullYear();
+    const months = now.getMonth() - b.getMonth();
+    const totalMonths = years * 12 + months + (now.getDate() < b.getDate() ? -1 : 0);
+    if (totalMonths < 12) return `${Math.max(1, totalMonths)}个月`;
+    if (totalMonths < 24) return `1岁${totalMonths-12}个月`;
+    return `${years}岁`;
+  } catch { return ''; }
+}
+
+// 费用分类显示名映射
+const CAT_DISPLAY: Record<string, string> = {
+  '检查': '检查类', '药品': '口服药品类', '治疗': '输液/注射药品类',
+  '手术': '手术类', '耗材': '耗材类', '处置': '处置类',
+  '服务': '服务类', '预防': '预防保健类', '其他': '其他',
+};
+
+function catDisplayName(cat: string): string {
+  return CAT_DISPLAY[cat] || cat;
+}
+
+function catDescription(cat: string): string {
+  const m: Record<string, string> = {
+    '检查': '已识别：检查、化验、影像相关费用',
+    '药品': '已识别：口服药品相关费用',
+    '治疗': '已识别：注射类药品相关费用',
+    '手术': '已识别：手术相关费用',
+    '耗材': '已识别：耗材相关费用',
+    '处置': '已识别：处置相关费用',
+    '服务': '已识别：服务相关费用',
+    '预防': '已识别：预防保健相关费用',
+    '其他': '已识别：其他费用',
+  };
+  return m[cat] || '已识别';
+}
 
 // ================================================================
 //  核心：composeReport
@@ -155,147 +205,391 @@ export function composeReport(input: ReportInput): ReportResult {
   const total = input.totalAmount ?? items.reduce((s,i)=>s+i.amount,0);
 
   const S: string[] = [];
+  const isBillExplain = reportType === 'bill_explain';
 
-  // ── 标题 + 基本信息（紧凑一行） ──
-  S.push(`# ${REPORT_TITLES[reportType]}`);
-  S.push('');
-  const metaParts: string[] = [];
-  if (input.hospitalName) metaParts.push(`**${input.hospitalName}**`);
-  metaParts.push(date);
-  if (input.city) metaParts.push(input.city);
-  S.push(metaParts.join('  |  '));
-  S.push('');
+  if (isBillExplain) {
+    // ═══════════════════════════════════════════
+    // 账单解释报告：严格对齐参考 PDF 格式
+    // ═══════════════════════════════════════════
 
-  // 宠物档案（单行缩进）
-  if (input.petInfo) {
-    const pi = input.petInfo;
-    const piParts: string[] = [];
-    piParts.push(`🐾 ${pet}`);
-    if (pi.species) piParts.push(pi.species);
-    if (pi.breed) piParts.push(pi.breed);
-    if (pi.gender) piParts.push(pi.gender);
-    if (pi.birthDate) piParts.push(`🎂 ${pi.birthDate}`);
-    if (pi.weightKg) piParts.push(`⚖️ ${pi.weightKg}kg`);
-    S.push(`${piParts.join(' · ')}`);
-  } else {
-    S.push(`🐾 ${pet}`);
-  }
-  S.push('');
+    const identified = items.filter(i => !i.isUnknown);
+    const unidentified = items.filter(i => i.isUnknown);
+    const identifiedSum = identified.reduce((s, i) => s + i.amount, 0);
+    const unidentifiedSum = unidentified.reduce((s, i) => s + i.amount, 0);
+    // 疑似误识别：金额极小（≤¥10）且名称含数字/时间的
+    const suspicious = items.filter(i => i.amount <= 10 && /\d{1,2}[:：]\d{2}|^\d+$/.test(i.rawName));
+    const suspiciousSum = suspicious.reduce((s, i) => s + i.amount, 0);
 
-  // ── 使用材料 + 事实（合并，减少重复） ──
-  S.push('## 事实与材料');
-  S.push('');
-  if (items.length) {
-    S.push(`本次就诊共 **${items.length}** 项收费，合计 **${fmt(total)}**。`);
-    if (input.visitReason) S.push(`就诊原因：${input.visitReason}`);
-    if (input.diagnosis) S.push(`诊断结果：${input.diagnosis}`);
+    // ── 标题区 ──
+    S.push(`# ${REPORT_TITLES[reportType]}`);
+    S.push('*PetVault Care Archive*');
     S.push('');
-    S.push('| 项目 | 金额 | 类别 | 匹配 |');
+
+    // ── 宠物信息条 ──
+    const infoParts: string[] = [];
+    infoParts.push(`**${pet}**`);
+    if (input.petInfo) {
+      const pi = input.petInfo;
+      const speciesLabel = (pi.species || '') + (pi.breed ? ` / ${pi.breed}` : '');
+      if (speciesLabel) infoParts.push(speciesLabel);
+      const age = calcAge(pi.birthDate);
+      const ageLabel = age + (pi.weightKg ? ` / ${pi.weightKg}kg` : '');
+      if (ageLabel) infoParts.push(ageLabel);
+    }
+    infoParts.push(date);
+    if (input.hospitalName) infoParts.push(`**${input.hospitalName}**`);
+    if (input.city) infoParts.push(input.city);
+    S.push(infoParts.join(' | '));
+    S.push('');
+
+    // ── 总费用 ──
+    S.push(`**总费用 ${fmt(total)}**`);
+    S.push('');
+
+    // ── 报告状态 ──
+    const reportStatus = unidentified.length > 0
+      ? '**报告状态** 不建议作为最终解释'
+      : '**报告状态** 可归档为就诊档案';
+    S.push(reportStatus);
+    S.push('');
+
+    // ── 概要统计条 ──
+    const statParts: string[] = [];
+    if (identified.length) statParts.push(`已识别 ${fmt(identifiedSum)}`);
+    if (unidentified.length) statParts.push(`待核实 ${fmt(unidentifiedSum)}`);
+    if (suspicious.length && suspiciousSum > 0) statParts.push(`疑似误识别 ${fmt(suspiciousSum)}`);
+    if (statParts.length) S.push(statParts.join(' | '));
+    S.push('');
+
+    // ── 概览段落 ──
+    const summaryLines: string[] = [];
+    summaryLines.push(`本次账单总额为 ${fmt(total)}。`);
+    if (identified.length && unidentified.length) {
+      summaryLines.push(`当前可明确解释的项目为 ${fmt(identifiedSum)}，占 ${pct(identifiedSum, total)}；待核实项目为 ${fmt(unidentifiedSum)}，占 ${pct(unidentifiedSum, total)}。`);
+    }
+    if (suspicious.length && suspiciousSum > 0) {
+      summaryLines.push(`另有 ${fmt(suspiciousSum)} 疑似为打印时间或系统信息。`);
+    }
+    if (unidentified.length) {
+      summaryLines.push('建议先向医院核实重点项目后，再将本报告作为最终档案或理赔材料使用。');
+    }
+    S.push(summaryLines.join(''));
+    S.push('');
+
+    // ── 重点提醒 ──
+    if (unidentified.length >= 2 || unidentifiedSum > total * 0.3) {
+      S.push('**重点提醒**：本次账单的主要疑点不是常规检查或药品项目，而是若干金额较高或名称无法可靠识别的项目。');
+      S.push('');
+    }
+
+    // ── 费用分类总览 ──
+    S.push('## 费用分类总览');
+    S.push('');
+    if (unidentified.length) {
+      S.push(`本次费用主要集中在待核实项目，当前无法判断这些费用具体对应什么服务。`);
+      S.push('');
+    }
+    S.push('| 类别 | 金额 | 占比 | 说明 |');
     S.push('|------|------|------|------|');
-    for (const it of items) {
-      S.push(`| ${it.rawName} | ${fmt(it.amount)} | ${it.category||'其他'} | ${it.isUnknown?'⚠️':'✅'} |`);
+    const cats = catGroup(items);
+    for (const [c, ci] of Object.entries(cats)) {
+      const ct = ci.reduce((s, i) => s + i.amount, 0);
+      S.push(`| ${catDisplayName(c)} | ${fmt(ct)} | ${pct(ct, total)} | ${catDescription(c)} |`);
     }
-  } else {
-    S.push('本次分析未包含具体的费用项目记录。');
-  }
-  S.push('');
-
-  // ── 整理结果 ──
-  S.push('## 整理结果');
-  S.push('');
-
-  // 概要：不带列表符号，用段落
-  if (input.summary) {
-    const matched = input.summary.matchedItems, unknown = input.summary.unknownItems;
-    const high = input.summary.priceHighItems, warn = input.summary.priceWarningItems;
-    S.push(`${input.summary.overallAssessment}`);
+    // 待核实项目作为单独行
+    if (unidentified.length) {
+      S.push(`| 待核实项目 | ${fmt(unidentifiedSum)} | ${pct(unidentifiedSum, total)} | 待核实：OCR不清或项目含义不明 |`);
+    }
+    if (suspicious.length && suspiciousSum > 0) {
+      S.push(`| 疑似误识别项目 | ${fmt(suspiciousSum)} | ${pct(suspiciousSum, total)} | 疑似误识别：可能不是实际收费项目 |`);
+    }
     S.push('');
-    const stats: string[] = [];
-    stats.push(`知识库匹配 ${matched}/${items.length} 项`);
-    if (unknown>0) stats.push(`${unknown} 项待确认`);
-    if (high>0) stats.push(`${high} 项价格偏高`);
-    if (warn>0) stats.push(`${warn} 项价格略高`);
-    S.push(stats.join(' · '));
-  } else {
-    S.push(`本次就诊共 ${items.length} 个项目，总费用 ${fmt(total)}。`);
-    const m = items.filter(i=>!i.isUnknown).length;
-    if (m < items.length) S.push(`${m} 项已匹配知识库，${items.length-m} 项待确认。`);
-  }
-  S.push('');
-
-  // 按报告类型放类型特定章节
-  S.push(...buildTypeSection(reportType, input, items, total, date));
-  S.push('');
-
-  // 逐项详情（放在结论之后）
-  if (items.length) {
-    S.push('### 逐项详情');
+    S.push('上表金额仅反映本次账单，实际价格会受城市、医院、动物体型、急诊/夜诊和耗材规格等因素影响。');
     S.push('');
-    for (let i=0;i<items.length;i++) {
-      const it = items[i];
-      S.push(`**${i+1}. ${it.rawName}** — ${fmt(it.amount)}`);
+
+    // ── 重点核实项目 ──
+    if (unidentified.length) {
+      S.push('## 重点核实项目');
       S.push('');
-      const detail: string[] = [];
-      if (it.category) detail.push(`类别：${it.category}`);
-      if (it.necessity) detail.push(`必要性：${it.necessity}`);
-      if (it.priceAssessment) {
-        detail.push(`价格：${it.priceAssessment.level}（参考 ${fmt(it.priceAssessment.p10)}~${fmt(it.priceAssessment.p90)}）`);
+      S.push('以下项目名称不清晰，建议向医院核实：');
+      S.push('');
+      for (const it of unidentified) {
+        const idx = items.indexOf(it) + 1;
+        const reason = it.unknownReason || '原始文字识别不清';
+        S.push(`- **编号 ${idx}** ${fmt(it.amount)}：${reason}。请向医院确认项目名称和对应服务内容。`);
       }
-      if (detail.length) {
-        S.push(`${detail.join(' · ')}`);
+      // 检查是否有同金额项目
+      const amountCounts: Record<number, number> = {};
+      for (const it of unidentified) {
+        amountCounts[it.amount] = (amountCounts[it.amount] || 0) + 1;
       }
-      if (it.explanation) {
-        S.push(`${it.explanation}`);
-      }
-      if (it.isUnknown) {
-        S.push(`⚠️ 该项目在知识库中未收录，解释为推断。建议向兽医确认。`);
+      for (const [amt, cnt] of Object.entries(amountCounts)) {
+        if (cnt > 1) {
+          S.push('');
+          S.push(`注意：金额为 ${fmt(Number(amt))} 的项目各有多个，它们是账单中的不同条目，请一并核实是否对应不同服务。`);
+        }
       }
       S.push('');
-    }
-  }
-
-  // ── 待确认 ──
-  S.push('## 待确认');
-  S.push('');
-  const uncertain = items.filter(i=>i.isUnknown);
-  if (uncertain.length) {
-    S.push(`以下 ${uncertain.length} 个项目暂未在知识库中匹配，建议向兽医核实：`);
-    S.push('');
-    for (const it of uncertain) {
-      S.push(`**${it.rawName}** (${fmt(it.amount)})`);
-      S.push(`${it.unknownReason||'知识库中未收录'}`);
+      S.push('账单中另有若干非收费条目（如打印时间戳），已排除在金额统计之外。');
       S.push('');
     }
-  }
-  if (!input.hospitalName) S.push('> 就诊医院名称未提供');
-  if (!input.diagnosis) S.push('> 诊断结果未提供（如有诊断书或病历，建议补充以获取更完整分析）');
-  if (!input.petName) S.push('> 宠物名称未提供');
-  if (!uncertain.length && input.hospitalName && input.petName) {
-    S.push('本次分析所有已识别项目均在知识库中找到匹配，基本信息完整。');
-  }
-  S.push('');
 
-  // ── 后续建议 ──
-  S.push('## 后续建议');
-  S.push('');
-  const actions = buildNextActions(reportType, items, input);
-  for (const a of actions) {
-    const cleaned = a.replace(/^\d+\.\s*\*\*/, '').replace(/\*\*$/, '').replace(/^(\d+\.\s*)/, '');
-    S.push(`${cleaned}`);
+    // ── 已识别项目解释（按类别分组） ──
+    if (identified.length) {
+      S.push('## 已识别项目解释');
+      S.push('');
+      const grouped = catGroup(identified);
+      for (const [cat, catItems] of Object.entries(grouped)) {
+        S.push(`### ${catDisplayName(cat)}`);
+        S.push('');
+        for (const it of catItems) {
+          const expl = it.explanation || '属于常规收费项目';
+          S.push(`- **${it.rawName}** ${fmt(it.amount)}：${expl}`);
+        }
+        S.push('');
+      }
+    }
+
+    // ── 向医院确认的问题（编号） ──
+    if (unidentified.length) {
+      S.push('## 向医院确认的问题');
+      S.push('');
+      let qIdx = 1;
+      for (const it of unidentified) {
+        const idx = items.indexOf(it) + 1;
+        S.push(`${qIdx}. 编号 ${idx}（${fmt(it.amount)}）的项目名称是什么？对应的服务内容是什么？`);
+        qIdx++;
+      }
+      // Check for duplicate amounts
+      const amountCounts: Record<number, number> = {};
+      for (const it of unidentified) { amountCounts[it.amount] = (amountCounts[it.amount] || 0) + 1; }
+      for (const [amt, cnt] of Object.entries(amountCounts)) {
+        if (cnt > 1) {
+          S.push(`${qIdx}. 金额为 ${fmt(Number(amt))} 的项目是否为不同项目？是否存在重复计费？`);
+          qIdx++;
+        }
+      }
+      if (suspicious.length) {
+        S.push(`${qIdx}. ${suspicious.map(s => `编号 ${items.indexOf(s)+1}`).join('、')} 可能是打印时间或系统信息，是否为实际收费？`);
+        qIdx++;
+      }
+      S.push('');
+    }
+
+    // ── 可直接发送给医院 ──
+    if (unidentified.length) {
+      S.push('## 可直接发送给医院');
+      S.push('');
+      S.push('> 您好，我想核对一下 ${date} 这张费用清单中的几个项目。');
+      S.push('> ');
+      const qItems = unidentified.map(it => `编号 ${items.indexOf(it)+1}（${it.rawName}，${fmt(it.amount)}）`).join('、');
+      S.push(`> ${qItems}，这些项目的名称在清单上不清晰，请问分别对应什么检查、治疗或服务？`);
+      S.push('> ');
+      // Check for duplicate amounts
+      const amtDups = Object.entries(
+        unidentified.reduce((acc, it) => { acc[it.amount] = (acc[it.amount] || 0) + 1; return acc; }, {} as Record<number, number>)
+      ).filter(([_, c]) => c > 1);
+      if (amtDups.length) {
+        S.push(`> 其中金额为 ${amtDups.map(([a]) => fmt(Number(a))).join('、')} 的项目是否有重复计费？`);
+        S.push('> ');
+      }
+      if (suspicious.length) {
+        S.push(`> ${suspicious.map(s => `编号 ${items.indexOf(s)+1}（${fmt(s.amount)}）`).join('、')} 是否为实际收费，还是打印时间或系统信息？`);
+        S.push('> ');
+      }
+      S.push('> 如果方便，也请提供一份清晰版费用明细、检查报告、诊断证明和病历记录。谢谢。');
+      S.push('');
+    }
+
+    // ── 本次就诊档案卡 ──
+    S.push('## 本次就诊档案卡');
     S.push('');
-  }
+    if (input.visitReason) S.push(`- **主诉**：${input.visitReason}`);
+    if (input.diagnosis) S.push(`- **初步判断**：材料记录：${input.diagnosis}`);
+    const testItems = identified.filter(i => i.category === '检查' || /检|测|超|X|C[TR]/i.test(i.rawName));
+    if (testItems.length) S.push(`- **检查**：${testItems.map(i => i.rawName).join('、')}`);
+    const treatItems = identified.filter(i => i.category === '治疗' || /注射|输液|针/i.test(i.rawName));
+    if (treatItems.length) S.push(`- **治疗**：${treatItems.map(i => i.rawName).join('、')}`);
+    const medItems = identified.filter(i => i.category === '药品' || /药|片|丸|胶囊|口服/i.test(i.rawName));
+    if (medItems.length) S.push(`- **用药**：${medItems.map(i => i.rawName).join('、')}`);
+    if (unidentified.length) {
+      const unkSummary = unidentified.map(it => `编号 ${items.indexOf(it)+1} ${fmt(it.amount)}`).join('、');
+      S.push(`- **待核实**：${unkSummary} 合计 ${fmt(unidentifiedSum)}`);
+    }
+    if (suspicious.length && suspiciousSum > 0) {
+      S.push(`- **疑似误识别**：${suspicious.map(s => `编号 ${items.indexOf(s)+1} ${fmt(s.amount)}`).join('、')}`);
+    }
+    S.push(`- **待补充材料**：病历、化验报告、影像报告、诊断证明`);
+    S.push('');
 
-  // ── 免责声明 ──
-  S.push('---');
-  S.push('');
-  if (reportType==='clinic_client_summary') {
-    S.push(CLINIC_DRAFT_DISCLAIMER);
-  } else {
+    // ── 后续建议 ──
+    S.push('## 后续建议');
+    S.push('');
+    if (unidentified.length) {
+      const unkRefs = unidentified.map(it => `编号 ${items.indexOf(it)+1}`).join('、');
+      S.push(`- 向医院确认 ${unkRefs} 的项目名称和服务内容。`);
+    }
+    S.push('- 保存原始发票、费用明细、处方、检查报告和沟通记录。');
+    S.push('- 如需理赔，请向保险公司确认材料清单、等待期和既往症规则。');
+    S.push('');
+
+    // ── 免责声明 ──
+    S.push('---');
+    S.push('');
     S.push(MEDICAL_DISCLAIMER);
+    S.push('');
+    S.push('> —');
+    S.push('> 本报告基于用户上传的账单/费用明细生成。');
+    S.push('');
+
+  } else {
+    // ═══════════════════════════════════════════
+    // 其他报告类型：保持原有通用格式
+    // ═══════════════════════════════════════════
+
+    // ── 标题 + 基本信息 ──
+    S.push(`# ${REPORT_TITLES[reportType]}`);
+    S.push('');
+    const metaParts: string[] = [];
+    if (input.hospitalName) metaParts.push(`**${input.hospitalName}**`);
+    metaParts.push(date);
+    if (input.city) metaParts.push(input.city);
+    S.push(metaParts.join('  |  '));
+    S.push('');
+
+    // 宠物档案
+    if (input.petInfo) {
+      const pi = input.petInfo;
+      const piParts: string[] = [];
+      piParts.push(`🐾 ${pet}`);
+      if (pi.species) piParts.push(pi.species);
+      if (pi.breed) piParts.push(pi.breed);
+      if (pi.gender) piParts.push(pi.gender);
+      if (pi.birthDate) piParts.push(`🎂 ${pi.birthDate}`);
+      if (pi.weightKg) piParts.push(`⚖️ ${pi.weightKg}kg`);
+      S.push(`${piParts.join(' · ')}`);
+    } else {
+      S.push(`🐾 ${pet}`);
+    }
+    S.push('');
+
+    // ── 使用材料 ──
+    S.push('## 使用材料');
+    S.push('');
+    if (items.length) {
+      S.push('- 本次上传的宠物医疗账单');
+      if (input.petInfo) S.push('- 当前宠物基础档案');
+      S.push('- 本次账单项目识别与解释结果');
+    } else {
+      S.push('- 本报告基于本次提交的账单项目与用户确认信息生成');
+    }
+    S.push('');
+
+    // ── 事实 ──
+    S.push('## 事实');
+    S.push('');
+    if (items.length) {
+      S.push(`本次就诊共 **${items.length}** 项收费，合计 **${fmt(total)}**。`);
+      if (input.visitReason) S.push(`就诊原因：${input.visitReason}`);
+      if (input.diagnosis) S.push(`诊断结果：${input.diagnosis}`);
+      S.push('');
+      S.push('| 项目 | 金额 | 类别 | 匹配 |');
+      S.push('|------|------|------|------|');
+      for (const it of items) {
+        S.push(`| ${it.rawName} | ${fmt(it.amount)} | ${it.category||'其他'} | ${it.isUnknown?'⚠️':'✅'} |`);
+      }
+    } else {
+      S.push('本次分析未包含具体的费用项目记录。');
+    }
+    S.push('');
+
+    // ── 整理结果 ──
+    S.push('## 整理结果');
+    S.push('');
+    if (input.summary) {
+      const matched = input.summary.matchedItems, unknown = input.summary.unknownItems;
+      const high = input.summary.priceHighItems, warn = input.summary.priceWarningItems;
+      S.push(`${input.summary.overallAssessment}`);
+      S.push('');
+      const stats: string[] = [];
+      stats.push(`知识库匹配 ${matched}/${items.length} 项`);
+      if (unknown>0) stats.push(`${unknown} 项待确认`);
+      if (high>0) stats.push(`${high} 项价格偏高`);
+      if (warn>0) stats.push(`${warn} 项价格略高`);
+      S.push(stats.join(' · '));
+    } else {
+      S.push(`本次就诊共 ${items.length} 个项目，总费用 ${fmt(total)}。`);
+      const m = items.filter(i=>!i.isUnknown).length;
+      if (m < items.length) S.push(`${m} 项已匹配知识库，${items.length-m} 项待确认。`);
+    }
+    S.push('');
+    S.push(...buildTypeSection(reportType, input, items, total, date));
+    S.push('');
+
+    // 逐项详情
+    if (items.length) {
+      S.push('### 逐项详情');
+      S.push('');
+      for (let i=0;i<items.length;i++) {
+        const it = items[i];
+        S.push(`**${i+1}. ${it.rawName}** — ${fmt(it.amount)}`);
+        S.push('');
+        const detail: string[] = [];
+        if (it.category) detail.push(`类别：${it.category}`);
+        if (it.necessity) detail.push(`必要性：${it.necessity}`);
+        if (it.priceAssessment) {
+          detail.push(`价格：${it.priceAssessment.level}（参考 ${fmt(it.priceAssessment.p10)}~${fmt(it.priceAssessment.p90)}）`);
+        }
+        if (detail.length) S.push(`${detail.join(' · ')}`);
+        if (it.explanation) S.push(`${it.explanation}`);
+        if (it.isUnknown) S.push(`⚠️ 该项目在知识库中未收录，解释为推断。建议向兽医确认。`);
+        S.push('');
+      }
+    }
+
+    // ── 待确认 ──
+    S.push('## 待确认');
+    S.push('');
+    const uncertain2 = items.filter(i=>i.isUnknown);
+    if (uncertain2.length) {
+      S.push(`以下 ${uncertain2.length} 个项目暂未在知识库中匹配，建议向兽医核实：`);
+      S.push('');
+      for (const it of uncertain2) {
+        S.push(`**${it.rawName}** (${fmt(it.amount)})`);
+        S.push(`${it.unknownReason||'知识库中未收录'}`);
+        S.push('');
+      }
+    }
+    if (!input.hospitalName) S.push('> 就诊医院名称未提供');
+    if (!input.diagnosis) S.push('> 诊断结果未提供（如有诊断书或病历，建议补充以获取更完整分析）');
+    if (!input.petName) S.push('> 宠物名称未提供');
+    if (!uncertain2.length && input.hospitalName && input.petName) {
+      S.push('本次分析所有已识别项目均在知识库中找到匹配，基本信息完整。');
+    }
+    S.push('');
+
+    // ── 后续建议 ──
+    S.push('## 后续建议');
+    S.push('');
+    const actions = buildNextActions(reportType, items, input);
+    for (const a of actions) {
+      const cleaned = a.replace(/^\d+\.\s*\*\*/, '').replace(/\*\*$/, '').replace(/^(\d+\.\s*)/, '');
+      S.push(`${cleaned}`);
+      S.push('');
+    }
+
+    // ── 免责声明 ──
+    S.push('---');
+    S.push('');
+    if (reportType==='clinic_client_summary') {
+      S.push(CLINIC_DRAFT_DISCLAIMER);
+    } else {
+      S.push(MEDICAL_DISCLAIMER);
+    }
+    if (reportType==='claim_check') { S.push(''); S.push(''); S.push(INSURANCE_DISCLAIMER); }
+    if (reportType==='bill_explain') { S.push(''); S.push(''); S.push(BILLING_BOUNDARY); }
+    S.push('');
   }
-  if (reportType==='claim_check') { S.push(''); S.push(''); S.push(INSURANCE_DISCLAIMER); }
-  if (reportType==='bill_explain') { S.push(''); S.push(''); S.push(BILLING_BOUNDARY); }
-  S.push('');
 
   const md = S.join('\n');
   return {

@@ -53,7 +53,8 @@ export const POST: RequestHandler = async ({ request }) => {
     if (pr.pdfPath && existsSync(pr.pdfPath)) pdfB64 = readFileSync(pr.pdfPath).toString('base64');
 
     return json({ success: pr.success, reportId: pr.reportId, pdfBase64: pdfB64,
-      agentUsed: !!agentMd, latexAvailable: isLatexAvailable() });
+      agentUsed: !!agentMd, latexAvailable: isLatexAvailable(),
+      error: pr.error, buildLog: pr.buildLog });
   } catch (e) {
     return json({ success:false, error:`${e}` }, { status:500 });
   }

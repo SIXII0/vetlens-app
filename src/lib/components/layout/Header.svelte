@@ -1,5 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { chatOpen, openChat, closeChat } from '$lib/stores/chat';
+  import { MessageCircle, X } from '@lucide/svelte';
 
   const pageTitles: Record<string, string> = {
     '/': '首页', '/upload': '上传账单', '/records': '就诊记录',
@@ -21,7 +23,35 @@
 
 <header class="flex items-center justify-between h-14 px-6 bg-white/70 backdrop-blur-xl border-b border-warm-100/60 sticky top-0 z-20">
   <h2 class="text-base font-bold text-warm-900 tracking-tight">{getPageTitle()}</h2>
-  <span class="inline-flex items-center gap-1.5 text-2xs text-warm-400">
-    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>就绪
-  </span>
+  <div class="flex items-center gap-3">
+    <button
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors group relative"
+      class:bg-brand-50={$chatOpen}
+      class:text-brand-600={$chatOpen}
+      class:text-warm-500={!$chatOpen}
+      class:hover:bg-brand-100={!$chatOpen}
+      onclick={() => {
+        if ($chatOpen) { closeChat(); }
+        else {
+          const id = $page.params.id;
+          const path = $page.url.pathname;
+          if (path.startsWith('/analysis/') && id) {
+            openChat({ analysisId: id, recordId: id });
+          } else if (path.startsWith('/pets/') && id) {
+            openChat({ petId: id });
+          } else {
+            openChat({});
+          }
+        }
+      }}
+    >
+      {#if $chatOpen}
+        <X size={14} />
+        <span>关闭助手</span>
+      {:else}
+        <MessageCircle size={14} class="group-hover:animate-pulse" />
+        <span>有问题？问我</span>
+      {/if}
+    </button>
+  </div>
 </header>

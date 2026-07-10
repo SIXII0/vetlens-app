@@ -20,8 +20,8 @@ export default {
           100: '#f5f3f0',
           200: '#e8e4df',
           300: '#d6d0c8',
-          400: '#b8b0a6',
-          500: '#8c857c',
+          400: '#9c9590',
+          500: '#7a7470',
           600: '#6b655e',
           700: '#524d47',
           800: '#3d3934',
@@ -44,16 +44,41 @@ export default {
         'xl': '0.75rem', '2xl': '1rem', '3xl': '1.25rem',
       },
       boxShadow: {
-        'card': '0 2px 8px rgb(0 0 0 / 0.06)',
+        'card': '0 1px 3px rgb(0 0 0 / 0.08)',
         'raised': '0 4px 16px rgb(0 0 0 / 0.1)',
+        'elevated': '0 8px 24px rgb(0 0 0 / 0.12)',
+      },
+      zIndex: {
+        '35': '35',
       },
       animation: {
         'enter': 'enter .25s ease-out',
+        'slide-in-right': 'slideInRight .2s ease-out',
+        'fade-in': 'fadeIn .2s ease-out',
+        'scale-in': 'scaleIn .15s ease-out',
+        'stagger': 'enter .3s ease-out both',
+        'gentle-bounce': 'gentleBounce 2s ease-in-out infinite',
       },
       keyframes: {
         enter: {
           '0%': { opacity: '0', transform: 'translateY(6px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideInRight: {
+          '0%': { opacity: '0', transform: 'translateX(16px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        gentleBounce: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-4px)' },
         },
       },
     }

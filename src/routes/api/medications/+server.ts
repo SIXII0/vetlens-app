@@ -22,9 +22,16 @@ function calcNextDue(frequency: string, fromDate?: string): string {
 }
 
 export const GET: RequestHandler = async ({ url }) => {
-  const petId = url.searchParams.get('petId');
-  if (!petId) return json({ error: 'petId required' }, { status: 400 });
   const db = getDb();
+  const id = url.searchParams.get('id');
+  const petId = url.searchParams.get('petId');
+
+  // 按 ID 查询单条
+  if (id) {
+    const record = db.prepare('SELECT * FROM medication_reminders WHERE id = ?').get(id);
+    if (!record) return json({ error: 'not found' }, { status: 404 });
+    return json(record);
+  }
 
   // 把已到期的长期药自动顺延到下一剂（保持周期节奏，不重置为今天）
   const now = new Date();
@@ -33,10 +40,13 @@ export const GET: RequestHandler = async ({ url }) => {
     String(now.getMinutes()).padStart(2,'0');
 
   // 找出所有逾期且没有 end_date（长期服药）的记录
-  const overdue = db.prepare(
-    `SELECT id, frequency, next_due FROM medication_reminders
-     WHERE pet_id = ? AND active = 1 AND end_date IS NULL AND next_due < ?`
-  ).all(petId, nowStr) as Array<{ id: string; frequency: string; next_due: string }>;
+  const overdueQuery = petId
+    ? `SELECT id, frequency, next_due FROM medication_reminders
+       WHERE pet_id = ? AND active = 1 AND end_date IS NULL AND next_due < ?`
+    : `SELECT id, frequency, next_due FROM medication_reminders
+       WHERE active = 1 AND end_date IS NULL AND next_due < ?`;
+  const overdueParams = petId ? [petId, nowStr] : [nowStr];
+  const overdue = db.prepare(overdueQuery).all(...overdueParams) as Array<{ id: string; frequency: string; next_due: string }>;
 
   // 逐条顺延：从原始 next_due 向前推进直到超过 now
   for (const m of overdue) {
@@ -48,14 +58,24 @@ export const GET: RequestHandler = async ({ url }) => {
   }
 
   // 已到期的有期限药（疗程结束）自动停用
-  db.prepare(
-    `UPDATE medication_reminders SET active = 0
-     WHERE pet_id = ? AND active = 1 AND end_date IS NOT NULL AND end_date < date('now')`
-  ).run(petId);
+  if (petId) {
+    db.prepare(
+      `UPDATE medication_reminders SET active = 0
+       WHERE pet_id = ? AND active = 1 AND end_date IS NOT NULL AND end_date < date('now')`
+    ).run(petId);
+  } else {
+    db.prepare(
+      `UPDATE medication_reminders SET active = 0
+       WHERE active = 1 AND end_date IS NOT NULL AND end_date < date('now')`
+    ).run();
+  }
 
-  return json(db.prepare(
-    'SELECT * FROM medication_reminders WHERE pet_id = ? AND active = 1 ORDER BY next_due ASC LIMIT 30'
-  ).all(petId));
+  const query = petId
+    ? 'SELECT * FROM medication_reminders WHERE pet_id = ? AND active = 1 ORDER BY next_due ASC LIMIT 30'
+    : 'SELECT * FROM medication_reminders WHERE active = 1 ORDER BY next_due ASC LIMIT 30';
+  const params = petId ? [petId] : [];
+
+  return json(db.prepare(query).all(...params));
 };
 
 export const POST: RequestHandler = async ({ request }) => {

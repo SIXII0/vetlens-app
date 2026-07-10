@@ -11,7 +11,21 @@ import { getLlmAdapter } from '../llm/index';
 import fs from 'fs';
 import path from 'path';
 
-const SKILL = path.join(process.cwd(), '.claude', 'skills', 'pet-vault-skill');
+// pet-vault-skill 安装位置：优先查找 Codex skills 目录，然后是 .claude/skills
+function findSkillDir(): string {
+  const candidates = [
+    path.join(process.env.HOME || process.env.USERPROFILE || '', '.codex', 'skills', 'pet-vault-skill'),
+    path.join(process.env.HOME || process.env.USERPROFILE || '', '.agents', 'skills', 'pet-vault-skill'),
+    path.join(process.cwd(), '.claude', 'skills', 'pet-vault-skill'),
+    path.join(process.cwd(), 'skills', 'pet-vault-skill'),
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, 'prompts'))) return dir;
+  }
+  return candidates[0]; // fallback
+}
+
+const SKILL = findSkillDir();
 const read = (f: string) => { const p = path.join(SKILL, f); return fs.existsSync(p) ? fs.readFileSync(p, 'utf-8') : ''; };
 
 function buildSystemPrompt(): string {
@@ -65,11 +79,21 @@ ${read('prompts/latex_renderer_agent.md')}
 
 ## 报告格式标准 (Report Composer 输出规范)
 
-### 必须包含的 4 个核心章节:
-1. ## 事实与材料 — 来源文件列表（类型/日期/宠物/医院/置信度各占一行）+ 可直接提取的原始信息
-2. ## 整理结果 — 先给结论摘要，再给分类详情和逐项解释
-3. ## 待确认 — 列出所有不确定项和缺失信息
-4. ## 后续建议 — 3-5 条具体可操作的下一步
+### 账单解释报告必须包含以下章节:
+1. ## 费用分类总览 — 表格：类别 | 金额 | 占比 | 说明
+2. ## 重点核实项目 — OCR不清或无法识别的项目，带编号和金额
+3. ## 已识别项目解释 — 按类别分组（检查/诊疗、用药/输液、其他），逐项解释
+4. ## 向医院确认的问题 — 编号列表，可直接发给医院
+5. ## 可直接发送给医院 — 引用块格式的消息模板
+6. ## 本次就诊档案卡 — 紧凑摘要：主诉、诊断、检查、治疗、用药、待核实
+7. ## 后续建议 — 3-5条具体可操作建议
+
+### 通用报告必须包含以下 5 个核心章节:
+1. ## 使用材料 — 用一两个简短段落说明信息来源，不暴露文件系统路径
+2. ## 事实 — 仅陈述可直接提取的信息（就诊日期、医院、宠物、诊断结果、费用明细表格）
+3. ## 整理结果 — 先给结论摘要，再给分类详情和逐项解释
+4. ## 待确认 — 列出所有不确定项和缺失信息
+5. ## 后续建议 — 3-5 条具体可操作的下一步
 
 ### 格式硬规则:
 - **每个 "- " 列表项独占一行**，严禁多个项目用 "- " 连在同一行
