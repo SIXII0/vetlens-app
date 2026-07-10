@@ -64,7 +64,8 @@
   <div class="flex items-center justify-between">
     <h1 class="text-xl font-bold text-warm-900">📄 分析报告</h1>
     <a href="/upload" class="btn-primary text-sm">+ 新建分析</a>
-  </div>
+    </div>
+<div class="card bg-gradient-to-r from-purple-50 to-white border-purple-100 mb-4 px-4 py-3"><div><h3 class="font-semibold text-sm text-purple-800">医疗报告归档</h3><p class="text-xs text-warm-500 mt-0.5 leading-relaxed">查看已生成的账单解读报告和理赔预检报告，支持导出 PDF 专业格式（LaTeX 排版），方便存档和分享。</p></div></div>
 
   <!-- 类型过滤 -->
   <div class="flex gap-2 flex-wrap">

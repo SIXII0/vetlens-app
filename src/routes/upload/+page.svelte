@@ -329,6 +329,7 @@
     {/if}
     <h1 class="text-xl font-bold text-warm-900">上传账单</h1>
   </div>
+  <div class="card bg-gradient-to-r from-brand-50 to-white border-brand-100 mb-4 px-4 py-3"><div><h3 class="font-semibold text-sm text-brand-800">OCR 智能解读</h3><p class="text-xs text-warm-500 mt-0.5 leading-relaxed">拍照或上传宠物医疗账单，AI 自动识别收费项目并逐项匹配知识库解读，支持保险理赔预检。</p></div></div>
 
   <!-- 步骤指示器 -->
   <div class="flex items-center gap-2 text-sm">

@@ -23,16 +23,30 @@
     if (activePetId) {
       const pet = $pets.find(p => p.id === activePetId);
       if (pet) species = (pet.species === '狗' ? '狗' : '猫');
+      // 切换宠物时清空旧数据，避免串号
+      lastResult = null;
+      history = [];
+      weights = [];
       loadHistory();
     }
   });
 
+  function clearForm() {
+    form = { bun:'', crea:'', glu:'', amy:'', wbc:'', rbc:'', hct:'' };
+    notes = '';
+    testDate = new Date().toISOString().split('T')[0];
+  }
+
   async function loadHistory() {
     if (!activePetId) return;
-    const res = await fetch(`/api/health-scores?petId=${activePetId}&limit=100`);
-    if (res.ok) {
-      history = await res.json();
-      if (history.length > 0) lastResult = history[0];
+    try {
+      const res = await fetch(`/api/health-scores?petId=${activePetId}&limit=100`);
+      if (res.ok) {
+        history = await res.json();
+        if (history.length > 0) lastResult = history[0];
+      }
+    } catch (e) {
+      console.error('加载健康数据失败:', e);
     }
   }
 
@@ -49,6 +63,7 @@
       const data = await res.json();
       lastResult = data;
       await loadHistory();
+      clearForm();
       activeTab = 'trend';
       msg = `评分完成: ${data.grade} (${data.overallScore}分)`;
     } catch (e) { msg = '提交失败: ' + (e as Error).message; }
@@ -59,7 +74,7 @@
     if (!confirm('删除这条记录？')) return;
     await fetch('/api/health-scores', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
     await loadHistory();
-    if (lastResult?.id === id) lastResult = null;
+    if (lastResult?.id === id) lastResult = history.length > 0 ? history[0] : null;
   }
 
   function trendPoints(ind: string) {
@@ -86,13 +101,17 @@
 
   async function loadWeights() {
     if (!activePetId) return;
-    const res = await fetch(`/api/health-scores?petId=${activePetId}&limit=100`);
-    if (res.ok) {
-      const all = await res.json();
-      weights = all.filter((h:any) => h.notes?.includes('[体重]')).map((h:any) => {
-        const w = parseFloat(h.notes?.replace('[体重]','').trim());
-        return { date: h.test_date, weight: isNaN(w) ? null : w };
-      }).filter((w:any) => w.weight !== null).reverse();
+    try {
+      const res = await fetch(`/api/health-scores?petId=${activePetId}&limit=100`);
+      if (res.ok) {
+        const all = await res.json();
+        weights = all.filter((h:any) => h.notes?.includes('[体重]')).map((h:any) => {
+          const w = parseFloat(h.notes?.replace('[体重]','').trim());
+          return { date: h.test_date, weight: isNaN(w) ? null : w };
+        }).filter((w:any) => w.weight !== null).reverse();
+      }
+    } catch (e) {
+      console.error('加载体重数据失败:', e);
     }
   }
 
@@ -101,11 +120,18 @@
     const w = parseFloat(weightVal);
     if (isNaN(w) || w <= 0) return;
     const pet = $pets.find(p => p.id === activePetId);
-    await fetch('/api/health-scores', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ petId: activePetId, testDate: weightDate, species: pet?.species||'猫', notes: `[体重]${w}`, bun:null,crea:null,glu:null,amy:null,wbc:null,rbc:null,hct:null }),
-    });
-    weightVal = ''; loadWeights();
+    try {
+      const res = await fetch('/api/health-scores', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ petId: activePetId, testDate: weightDate, species: pet?.species||'猫', notes: `[体重]${w}`, bun:null,crea:null,glu:null,amy:null,wbc:null,rbc:null,hct:null }),
+      });
+      if (!res.ok) { msg = '体重记录失败'; return; }
+      weightVal = '';
+      await loadWeights();
+      msg = '体重记录成功';
+    } catch (e) {
+      msg = '体重记录失败: ' + (e as Error).message;
+    }
   }
 
   function scoreColor(s: number | null): string {
@@ -134,6 +160,7 @@
 
 <div class="max-w-4xl mx-auto space-y-6">
   <h1 class="text-xl font-bold text-warm-900">🩺 健康监测</h1>
+<div class="card bg-gradient-to-r from-emerald-50 to-white border-emerald-100 mb-4 px-4 py-3"><div><h3 class="font-semibold text-sm text-emerald-800">AI 综合健康评分</h3><p class="text-xs text-warm-500 mt-0.5 leading-relaxed">录入化验指标（血常规/生化/肾功能），AI 自动评分并结合体重年龄生成综合健康报告，追踪趋势变化。</p></div></div>
 
   <div class="flex gap-2 flex-wrap">
     {#each $pets as pet}
@@ -178,6 +205,41 @@
         <input type="text" class="input-field mb-4" placeholder="备注（可选）" bind:value={notes} />
         <button class="btn-primary w-full" onclick={handleSubmit} disabled={loading}>{loading ? '计算中...' : '📊 提交并计算评分'}</button>
       </div>
+    {:else if activeTab === 'weight'}
+      <div class="card">
+        <h3 class="font-semibold text-warm-700 mb-3">⚖️ 体重记录</h3>
+        <div class="flex gap-2 mb-4">
+          <input type="number" step="0.1" class="input-field w-32" placeholder="kg" bind:value={weightVal} />
+          <input type="date" class="input-field w-40" bind:value={weightDate} />
+          <button class="btn-primary text-sm" onclick={addWeight} disabled={!weightVal}>记录</button>
+        </div>
+        {#if weights.length >= 2}
+          <div class="relative h-32">
+            <svg viewBox="0 0 {weights.length*50} 140" class="w-full h-full">
+              <polyline fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"
+                points={(()=>{const maxW=Math.max(...weights.map((w:any)=>w.weight),1);const minW=Math.min(...weights.map((w:any)=>w.weight),0);return weights.map((w:any,i:number)=>`${i*50+25},${140-((w.weight-minW)/(maxW-minW||1))*100}`).join(' ')})()}/>
+              {#each weights as w, i}
+                {@const maxW = Math.max(...weights.map((x:any)=>x.weight), 1)}
+                {@const minW = Math.min(...weights.map((x:any)=>x.weight), 0)}
+                <circle cx={i*50+25} cy={140-((w.weight-minW)/(maxW-minW||1))*100} r="4" fill="#f97316" stroke="white" stroke-width="2"/>
+                <text x={i*50+25} y="155" fill="#9ca3af" font-size="9" text-anchor="middle">{w.date.slice(5)}</text>
+              {/each}
+            </svg>
+          </div>
+        {:else}
+          <div class="text-center py-6 text-warm-400 text-sm">记录2次以上体重即可生成趋势曲线</div>
+        {/if}
+        {#if weights.length > 0}
+          <div class="mt-3 space-y-1">
+            {#each [...weights].reverse().slice(0,10) as w}
+              <div class="flex justify-between text-sm py-1 border-b border-warm-100 last:border-0">
+                <span class="text-warm-500">{w.date}</span>
+                <span class="font-semibold text-warm-900">{w.weight} kg</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
     {:else}
       {#if lastResult}
         <div class="card bg-gradient-to-br from-white to-gray-50">
@@ -190,7 +252,7 @@
             <div class="text-sm text-warm-500">综合健康评分 /100</div>
           </div>
           <div class="space-y-3">
-            {#each [{l:'肾功能',p:32,s:lastResult.kidney_score,c:'bg-amber-500'},{l:'血糖+胰腺',p:28,s:lastResult.pancreas_score,c:'bg-blue-500'},{l:'血常规',p:30,s:lastResult.cbc_score,c:'bg-emerald-500'}] as cat}
+            {#each [{l:'肾功能',p:32,s:lastResult.kidney_score,c:'bg-amber-500'},{l:'血糖+胰腺',p:28,s:lastResult.pancreas_score,c:'bg-blue-500'},{l:'血常规',p:30,s:lastResult.cbc_score,c:'bg-emerald-500'},{l:'体重',p:5,s:lastResult.weight_score,c:'bg-purple-500'},{l:'年龄',p:5,s:lastResult.age_score,c:'bg-cyan-500'}] as cat}
               <div class="flex items-center gap-3">
                 <span class="text-sm w-20 text-warm-600">{cat.l}</span>
                 <div class="flex-1 h-4 bg-warm-100 rounded-full overflow-hidden">
@@ -241,7 +303,7 @@
               <div class="flex items-center justify-between py-2 border-b border-warm-100 last:border-0">
                 <div><span class="text-sm font-medium text-warm-800">{h.test_date?.slice(0,10)}</span><span class="text-xs text-warm-400 ml-2">{h.species==='狗'?'🐶':'🐱'}</span></div>
                 <div class="flex items-center gap-3">
-                  <span class="text-xs text-warm-500">肾:{h.kidney_score??'—'} 胰:{h.pancreas_score??'—'} 血:{h.cbc_score??'—'}</span>
+                  <span class="text-xs text-warm-500">肾:{h.kidney_score??'—'} 胰:{h.pancreas_score??'—'} 血:{h.cbc_score??'—'} 体:{h.weight_score??'—'} 龄:{h.age_score??'—'}</span>
                   <span class="text-sm font-bold {scoreColor(h.overall_score)}">{h.overall_score??'—'}分</span>
                   <span class="px-1.5 py-0.5 rounded text-xs {gradeColor(h.grade||'')}">{h.grade||'—'}</span>
                   <button class="text-red-400 text-xs hover:text-red-600" onclick={()=>handleDelete(h.id)}>🗑️</button>
@@ -253,41 +315,6 @@
       {:else if !lastResult}
         <div class="card text-center py-12 text-warm-400">暂无健康数据，请先录入</div>
       {/if}
-    {:else if activeTab === 'weight'}
-      <div class="card">
-        <h3 class="font-semibold text-warm-700 mb-3">⚖️ 体重记录</h3>
-        <div class="flex gap-2 mb-4">
-          <input type="number" step="0.1" class="input-field w-32" placeholder="kg" bind:value={weightVal} />
-          <input type="date" class="input-field w-40" bind:value={weightDate} />
-          <button class="btn-primary text-sm" onclick={addWeight} disabled={!weightVal}>记录</button>
-        </div>
-        {#if weights.length >= 2}
-          <div class="relative h-32">
-            <svg viewBox="0 0 {weights.length*50} 140" class="w-full h-full">
-              <polyline fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"
-                points={(()=>{const maxW=Math.max(...weights.map((w:any)=>w.weight),1);const minW=Math.min(...weights.map((w:any)=>w.weight),0);return weights.map((w:any,i:number)=>`${i*50+25},${140-((w.weight-minW)/(maxW-minW||1))*100}`).join(' ')})()}/>
-              {#each weights as w, i}
-                {@const maxW = Math.max(...weights.map((x:any)=>x.weight), 1)}
-                {@const minW = Math.min(...weights.map((x:any)=>x.weight), 0)}
-                <circle cx={i*50+25} cy={140-((w.weight-minW)/(maxW-minW||1))*100} r="4" fill="#f97316" stroke="white" stroke-width="2"/>
-                <text x={i*50+25} y="155" fill="#9ca3af" font-size="9" text-anchor="middle">{w.date.slice(5)}</text>
-              {/each}
-            </svg>
-          </div>
-        {:else}
-          <div class="text-center py-6 text-warm-400 text-sm">记录2次以上体重即可生成趋势曲线</div>
-        {/if}
-        {#if weights.length > 0}
-          <div class="mt-3 space-y-1">
-            {#each [...weights].reverse().slice(0,10) as w}
-              <div class="flex justify-between text-sm py-1 border-b border-warm-100 last:border-0">
-                <span class="text-warm-500">{w.date}</span>
-                <span class="font-semibold text-warm-900">{w.weight} kg</span>
-              </div>
-            {/each}
-          </div>
-        {/if}
-      </div>
     {/if}
   {/if}
 </div>

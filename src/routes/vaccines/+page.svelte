@@ -77,7 +77,8 @@
   <div class="flex items-center justify-between">
     <h1 class="text-xl font-bold text-warm-900">💉 疫苗与驱虫日历</h1>
     <button class="btn-primary text-sm" onclick={() => { showForm = true; form.dateGiven = new Date().toISOString().split('T')[0]; autoSetNext(form.vaccineType); }}>+ 添加记录</button>
-  </div>
+    </div>
+<div class="card bg-gradient-to-r from-amber-50 to-white border-amber-100 mb-4 px-4 py-3"><div><h3 class="font-semibold text-sm text-amber-800">预防保健日历</h3><p class="text-xs text-warm-500 mt-0.5 leading-relaxed">记录疫苗接种和驱虫时间，提前提醒下一针，建立完整的预防保健档案。支持猫三联/狂犬/体内外驱虫等。</p></div></div>
 
   <div class="flex gap-2 flex-wrap">
     {#each $pets as pet}

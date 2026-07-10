@@ -114,11 +114,98 @@ interface CategoryDef {
   keys: string[];   // 对应指标 key
 }
 
-const CATEGORIES: CategoryDef[] = [
+const LAB_CATEGORIES: CategoryDef[] = [
   { name: '肾功能',   weight: 32, keys: ['bun', 'crea'] },
   { name: '血糖+胰腺', weight: 28, keys: ['glu', 'amy'] },
   { name: '血常规',   weight: 30, keys: ['wbc', 'rbc', 'hct'] },
 ];
+
+/** 所有分类（含体重、年龄），总权重=100% */
+const ALL_CATEGORIES: CategoryDef[] = [
+  ...LAB_CATEGORIES,
+  { name: '体重', weight: 5,  keys: ['weight'] },
+  { name: '年龄', weight: 5,  keys: ['age'] },
+];
+
+// ─── 体重评分 ──────────────────────────────────────
+
+/** 物种默认理想体重范围 (kg) */
+const DEFAULT_WEIGHT_RANGE: Record<string, { min: number; max: number }> = {
+  cat: { min: 3.0, max: 5.5 },
+  dog: { min: 5.0, max: 25.0 },  // 犬种差异大，默认中等体型
+};
+
+/**
+ * 体重评分 (0-100)
+ * - 在品种理想范围内 → 100
+ * - 偏离 10% → 80, 偏离 20% → 50, 偏离 >40% → 20
+ */
+export function scoreWeight(
+  weightKg: number,
+  breedRange: { min: number; max: number } | null,
+  species: 'cat' | 'dog'
+): number {
+  const range = breedRange || DEFAULT_WEIGHT_RANGE[species];
+  const { min, max } = range;
+  const ideal = (min + max) / 2;
+
+  if (weightKg >= min && weightKg <= max) {
+    // 正常范围 → 80-100，理想中值得最高分
+    const distFromIdeal = Math.abs(weightKg - ideal);
+    const maxDist = Math.max(max - ideal, ideal - min);
+    return Math.round(100 - (distFromIdeal / (maxDist || 1)) * 20);
+  }
+
+  // 偏离理想范围
+  const excess = weightKg < min
+    ? (min - weightKg) / (min || 1)
+    : (weightKg - max) / (max || 1);
+
+  if (excess <= 0.1) return 80;
+  if (excess <= 0.2) return 65;
+  if (excess <= 0.3) return 50;
+  if (excess <= 0.5) return 30;
+  return 15;  // 严重偏离（肥胖/消瘦）
+}
+
+// ─── 年龄评分 ──────────────────────────────────────
+
+/**
+ * 年龄评分 (0-100)
+ * 根据物种和年龄段的健康风险曲线
+ */
+export function scoreAge(ageYears: number, species: 'cat' | 'dog'): number {
+  if (species === 'cat') {
+    if (ageYears < 0.5)  return 85;   // 幼猫（免疫未完善）
+    if (ageYears < 1)    return 90;
+    if (ageYears < 7)    return 100;  // 青壮年（黄金期）
+    if (ageYears < 10)   return 80;   // 中年
+    if (ageYears < 13)   return 60;   // 老年
+    if (ageYears < 16)   return 40;   // 高龄
+    return 20;                         // 超高龄
+  } else {
+    // 狗：大型犬衰老更快，简化版取中等曲线
+    if (ageYears < 0.5)  return 85;
+    if (ageYears < 1)    return 90;
+    if (ageYears < 6)    return 100;  // 狗的青壮年较猫短
+    if (ageYears < 9)    return 75;
+    if (ageYears < 12)   return 55;
+    if (ageYears < 15)   return 35;
+    return 15;
+  }
+}
+
+// ─── 品种体重范围查询 ──────────────────────────────
+
+/** 从品种名模糊匹配品种表的理想体重范围 */
+export function getBreedWeightRange(
+  breed: string | null | undefined,
+  species: 'cat' | 'dog'
+): { min: number; max: number } | null {
+  if (!breed) return null;
+  // 由调用方传入已查询的范围，引擎本身不做 DB 查询
+  return null;
+}
 
 function getStatus(score: number | null): 'normal' | 'mild' | 'severe' | 'critical' | 'unknown' {
   if (score === null) return 'unknown';
@@ -128,47 +215,94 @@ function getStatus(score: number | null): 'normal' | 'mild' | 'severe' | 'critic
   return 'critical';
 }
 
+export interface HealthScoreInput {
+  species: 'cat' | 'dog';
+  /** 化验值: { bun, crea, glu, amy, wbc, rbc, hct } */
+  values: Record<string, number | null>;
+  /** 体重 (kg) */
+  weightKg?: number | null;
+  /** 年龄 (岁) */
+  ageYears?: number | null;
+  /** 品种理想体重范围 (min/max kg) */
+  breedRange?: { min: number; max: number } | null;
+}
+
 /** 计算综合健康评分 */
-export function calculateHealthScore(
-  species: 'cat' | 'dog',
-  values: Record<string, number | null>
-): HealthScoreResult {
+export function calculateHealthScore(input: HealthScoreInput): HealthScoreResult {
+  const { species, values, weightKg, ageYears, breedRange } = input;
   const categories: CategoryScore[] = [];
   const warnings: string[] = [];
   let totalWeight = 0;
   let weightedSum = 0;
 
-  for (const cat of CATEGORIES) {
-    const indicators = cat.keys.map(key => {
-      const value = values[key] ?? null;
-      const rangeData = REFERENCE_RANGES[key];
-      if (!rangeData) return { key, name: key, value, score: null, unit: '', status: 'unknown' as const };
-
-      const range = rangeData[species];
-      const score = value !== null ? scoreIndicator(value, range) : null;
+  for (const cat of ALL_CATEGORIES) {
+    if (cat.keys[0] === 'weight') {
+      // ── 体重评分 ──
+      const score = weightKg != null ? scoreWeight(weightKg, breedRange || null, species) : null;
       const status = getStatus(score);
+      const name = weightKg != null ? `体重 ${weightKg}kg` : '体重（未录入）';
 
-      if (status === 'critical') {
-        warnings.push(`${range.name}: ${value} ${range.unit}（危急值！参考范围 ${range.low}-${range.high} ${range.unit}）`);
-      } else if (status === 'severe') {
-        warnings.push(`${range.name}: ${value} ${range.unit}（严重偏离，参考范围 ${range.low}-${range.high} ${range.unit}）`);
+      if (status === 'critical') warnings.push(`体重严重偏离理想范围`);
+      else if (status === 'severe') warnings.push(`体重明显偏离理想范围`);
+
+      categories.push({
+        name: cat.name,
+        weight: cat.weight,
+        indicators: [{ key: 'weight', name, value: weightKg ?? null, score, unit: 'kg', status }],
+        totalScore: score
+      });
+
+      if (score !== null) { weightedSum += score * cat.weight; totalWeight += cat.weight; }
+    } else if (cat.keys[0] === 'age') {
+      // ── 年龄评分 ──
+      const score = ageYears != null ? scoreAge(ageYears, species) : null;
+      const status = getStatus(score);
+      const name = ageYears != null
+        ? `年龄 ${ageYears.toFixed(1)}岁`
+        : '年龄（未录入）';
+
+      if (score !== null && score < 40) warnings.push(`宠物已进入高龄阶段，建议增加体检频率`);
+
+      categories.push({
+        name: cat.name,
+        weight: cat.weight,
+        indicators: [{ key: 'age', name, value: ageYears ?? null, score, unit: '岁', status }],
+        totalScore: score
+      });
+
+      if (score !== null) { weightedSum += score * cat.weight; totalWeight += cat.weight; }
+    } else {
+      // ── 化验指标 ──
+      const indicators = cat.keys.map(key => {
+        const value = values[key] ?? null;
+        const rangeData = REFERENCE_RANGES[key];
+        if (!rangeData) return { key, name: key, value, score: null, unit: '', status: 'unknown' as const };
+
+        const range = rangeData[species];
+        const score = value !== null ? scoreIndicator(value, range) : null;
+        const status = getStatus(score);
+
+        if (status === 'critical') {
+          warnings.push(`${range.name}: ${value} ${range.unit}（危急值！参考范围 ${range.low}-${range.high} ${range.unit}）`);
+        } else if (status === 'severe') {
+          warnings.push(`${range.name}: ${value} ${range.unit}（严重偏离，参考范围 ${range.low}-${range.high} ${range.unit}）`);
+        }
+
+        return { key, name: range.name, value, score, unit: range.unit, status };
+      });
+
+      const validScores = indicators.filter(i => i.score !== null).map(i => i.score!);
+      const totalScore = validScores.length > 0
+        ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length)
+        : null;
+
+      if (totalScore !== null) {
+        weightedSum += totalScore * cat.weight;
+        totalWeight += cat.weight;
       }
 
-      return { key, name: range.name, value, score, unit: range.unit, status };
-    });
-
-    // 分类得分 = 各指标得分的平均值（仅计算有值的指标）
-    const validScores = indicators.filter(i => i.score !== null).map(i => i.score!);
-    const totalScore = validScores.length > 0
-      ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length)
-      : null;
-
-    if (totalScore !== null) {
-      weightedSum += totalScore * cat.weight;
-      totalWeight += cat.weight;
+      categories.push({ name: cat.name, weight: cat.weight, indicators, totalScore });
     }
-
-    categories.push({ name: cat.name, weight: cat.weight, indicators, totalScore });
   }
 
   // 综合得分

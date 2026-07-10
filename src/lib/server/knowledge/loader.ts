@@ -6,8 +6,11 @@ import path from 'path';
 import { insertTerms, countTerms } from '../db/terms';
 import { insertPrices } from '../db/prices';
 import { getDb } from '../db/index';
+import { env } from '$env/dynamic/private';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+function getDataDir(): string {
+  return env.DATA_DIR || path.join(process.cwd(), 'data');
+}
 
 /** 加载所有知识库数据到 SQLite */
 export function loadAllKnowledge(force = false): { terms: number; prices: number; drugs: number; breeds: number } {
@@ -27,21 +30,21 @@ export function loadAllKnowledge(force = false): { terms: number; prices: number
   }
 
   // 加载术语库
-  const termsPath = path.join(DATA_DIR, 'terms.json');
+  const termsPath = path.join(getDataDir(), 'terms.json');
   if (fs.existsSync(termsPath)) {
     const terms = JSON.parse(fs.readFileSync(termsPath, 'utf-8'));
     results.terms = insertTerms(terms);
   }
 
   // 加载价格库
-  const pricesPath = path.join(DATA_DIR, 'prices.json');
+  const pricesPath = path.join(getDataDir(), 'prices.json');
   if (fs.existsSync(pricesPath)) {
     const prices = JSON.parse(fs.readFileSync(pricesPath, 'utf-8'));
     results.prices = insertPrices(prices);
   }
 
   // 加载药品库
-  const drugsPath = path.join(DATA_DIR, 'drugs.json');
+  const drugsPath = path.join(getDataDir(), 'drugs.json');
   if (fs.existsSync(drugsPath)) {
     const drugs: Array<Record<string, unknown>> = JSON.parse(fs.readFileSync(drugsPath, 'utf-8'));
     const db = getDb();
@@ -56,7 +59,7 @@ export function loadAllKnowledge(force = false): { terms: number; prices: number
   }
 
   // 加载品种疾病库
-  const breedsPath = path.join(DATA_DIR, 'breeds.json');
+  const breedsPath = path.join(getDataDir(), 'breeds.json');
   if (fs.existsSync(breedsPath)) {
     const breeds = JSON.parse(fs.readFileSync(breedsPath, 'utf-8'));
     const db = getDb();
@@ -75,7 +78,7 @@ export function loadAllKnowledge(force = false): { terms: number; prices: number
 
 /** 加载种子医院数据 */
 export function loadSeedHospitals(): number {
-  const hospitalsPath = path.join(DATA_DIR, 'hospitals.json');
+  const hospitalsPath = path.join(getDataDir(), 'hospitals.json');
   if (!fs.existsSync(hospitalsPath)) return 0;
 
   const hospitals = JSON.parse(fs.readFileSync(hospitalsPath, 'utf-8'));

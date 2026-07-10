@@ -43,14 +43,30 @@ export function priceLevelClass(level: string): string {
   }
 }
 
-/** 获取价格对应的 badge class */
+/** 获取价格对应的 badge class（含图标） */
 export function priceLevelBadge(level: string): string {
   switch (level) {
-    case '合理': return 'badge-green';
-    case '略高': return 'badge-amber';
-    case '偏高': return 'badge-red';
-    default: return 'badge-gray';
+    case '合理': return 'badge badge-price-ok';
+    case '略高': return 'badge badge-price-warn';
+    case '偏高': return 'badge badge-price-high';
+    default: return 'badge badge-gray';
   }
+}
+/** 获取价格对应的图标 */
+export function priceLevelIcon(level: string): string {
+  switch (level) {
+    case '合理': return '✅';
+    case '略高': return '⚠️';
+    case '偏高': return '🔴';
+    default: return '';
+  }
+}
+
+/** 获取必要性对应的 badge class */
+export function necessityBadge(necessity: string): string {
+  if (necessity.includes('必做')) return 'badge badge-nec-must';
+  if (necessity.includes('建议做')) return 'badge badge-nec-suggest';
+  return 'badge badge-nec-opt';
 }
 
 /** 获取必要性对应的颜色 */

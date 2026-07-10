@@ -13,7 +13,31 @@
       "Bash(python3 -c \"import pytesseract; print\\('pytesseract OK'\\)\")",
       "Bash(tesseract \"F:/Users/宋泽锋/Desktop/Pet/R-C.png\" stdout -l chi_sim)",
       "Bash(tesseract \"F:/Users/宋泽锋/Desktop/Pet/R-C.png\" stdout)",
-      "Bash(tesseract --list-langs)"
+      "Bash(tesseract --list-langs)",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"SELECT name_zh, substr\\(description_zh,1,80\\), body_systems IS NOT NULL as has_systems, symptoms IS NOT NULL as has_symptoms, drugs IS NOT NULL as has_drugs, breeds IS NOT NULL as has_breeds, detail_json IS NOT NULL as has_detail FROM kb_diseases WHERE slug='acetaminophen-toxicity';\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"SELECT name_zh, substr\\(description_zh,1,80\\), substr\\(indications,1,80\\), dosing_json IS NOT NULL as has_dosing, detail_json IS NOT NULL as has_detail FROM kb_drugs2 WHERE slug='acarbose';\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"SELECT COUNT\\(*\\) as cnt FROM kb_breed_diseases;\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"SELECT species, breed, disease, risk_level FROM kb_breed_diseases LIMIT 5;\")",
+      "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('F:/Users/宋泽锋/Desktop/Pet/peqaboo/peqaboo_data/diseases_detail.json','utf8'\\)\\); const withBreeds=d.filter\\(x=>\\(x.breedPredispositions||[]\\).length>0\\); console.log\\('有品种倾向的疾病:',withBreeds.length\\); withBreeds.slice\\(0,2\\).forEach\\(x=>{console.log\\(x.canonicalName\\); x.breedPredispositions.slice\\(0,3\\).forEach\\(b=>console.log\\(JSON.stringify\\({slug:b.slug,cn:b.canonical_name,i18n:b.name_i18n?Object.keys\\(b.name_i18n\\).filter\\(k=>k.includes\\('zh'\\)\\):null,risk:b.risk_level,evidence:b.evidence_strength}\\)\\)\\);}\\)\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"SELECT COUNT\\(*\\) FROM kb_breed_diseases;\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"SELECT id, species, breed, disease, risk_level FROM kb_breed_diseases ORDER BY rowid DESC LIMIT 10;\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d\\);console.log\\('疾病总数:',j.total\\);console.log\\('名称:',j.rows[0]?.name_zh?.slice\\(0,80\\)\\);}catch\\(e\\){console.log\\('RAW:',d.slice\\(0,200\\)\\)}}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\('总数:',j.total\\);j.rows.forEach\\(r=>console.log\\(' -',r.name_zh?.slice\\(0,60\\)\\)\\);}\\)\")",
+      "Bash(curl -s \"http://localhost:3000/api/knowledge-base?type=drugs&limit=2\")",
+      "Bash(curl -s \"http://localhost:3000/api/knowledge-base?type=breeds&limit=2\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \".schema pets\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"SELECT id, name, species, breed, gender, birth_date FROM pets;\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \".schema kb_breeds2\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"SELECT slug, canonical_name, species, weight_min, weight_max FROM kb_breeds2 WHERE species='cat' LIMIT 5;\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"ALTER TABLE health_scores ADD COLUMN weight_score REAL;\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"ALTER TABLE health_scores ADD COLUMN age_score REAL;\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/health-scores -H 'Content-Type: application/json' -d '{\"petId\":\"c0ed28cf-d6cf-461a-b9e0-7231fd07159e\",\"testDate\":\"2026-07-10\",\"species\":\"猫\",\"bun\":8.5,\"crea\":140,\"glu\":5.5,\"amy\":950,\"wbc\":11,\"rbc\":7.5,\"hct\":34,\"notes\":\"验证体重年龄评分\"}')",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\('综合:',j.overallScore,'分',j.grade\\);j.categories.forEach\\(c=>{console.log\\(c.name,'\\('+c.weight+'%\\):',c.totalScore,'分',c.indicators.map\\(i=>i.name+'='+i.score\\).join\\(', '\\)\\)}\\);if\\(j.warnings.length>0\\){console.log\\('⚠️ 警告:',j.warnings.join\\('; '\\)\\)}}\\)\")",
+      "Bash(curl -s -X POST \"http://localhost:3000/api/health-scores\" -H \"Content-Type: application/json\" -d \"{\\\\\"petId\\\\\":\\\\\"c0ed28cf-d6cf-461a-b9e0-7231fd07159e\\\\\",\\\\\"testDate\\\\\":\\\\\"2026-07-10\\\\\",\\\\\"species\\\\\":\\\\\"猫\\\\\",\\\\\"bun\\\\\":8.5,\\\\\"crea\\\\\":140,\\\\\"glu\\\\\":5.5,\\\\\"amy\\\\\":950,\\\\\"wbc\\\\\":11,\\\\\"rbc\\\\\":7.5,\\\\\"hct\\\\\":34}\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d\\);console.log\\('综合:',j.overallScore,'分','等级:',j.grade\\);j.categories.forEach\\(c=>console.log\\(c.name,'权重'+c.weight+'%:',c.totalScore,'分'\\)\\);if\\(j.warnings?.length\\)console.log\\('⚠️:',j.warnings.join\\(';'\\)\\)}catch\\(e\\){console.log\\('RAW ERR:',d.slice\\(0,300\\)\\)}}\\)\")",
+      "Bash(awk 'NR>=75 && NR<=95' \"f:/Users/宋泽锋/Desktop/Pet/应用端模拟/vetlens-app/src/routes/api/health-scores/+server.ts\")",
+      "Bash(sqlite3 \"F:/Pet_Projects/VetLens/data/vetlens.db\" \"PRAGMA table_info\\(health_scores\\);\")"
     ]
   }
 }

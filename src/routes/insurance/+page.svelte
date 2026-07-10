@@ -168,7 +168,9 @@
     <button class="btn-primary text-sm" onclick={() => { showForm = true; resetForm(); }}>
       + 添加保单
     </button>
-  </div>
+    </div>
+<div class="card bg-gradient-to-r from-indigo-50 to-white border-indigo-100 mb-4 px-4 py-3"><div><h3 class="font-semibold text-sm text-indigo-800">保险理赔预检</h3><p class="text-xs text-warm-500 mt-0.5 leading-relaxed">配置宠物保险保单，就诊后逐项判赔并预估自付金额，指导准备理赔材料，提升理赔通过率。</p></div></div>
+
 
   <!-- 添加保单表单 -->
   {#if showForm}

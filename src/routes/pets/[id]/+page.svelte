@@ -40,8 +40,8 @@
   }
   function barHeight(t: number, m: number): string { return m===0?'4px':Math.max((t/m)*100,t>0?8:4)+'%'; }
   function getCatColor(c: string): string {
-    const m: Record<string,string>={'检查':'#fb923c','药品':'#ef4444','治疗':'#f59e0b','手术':'#8b5cf6','耗材':'#6b7280','服务':'#14b8a6','预防':'#22c55e'};
-    return m[c]||'#9ca3af';
+    const m: Record<string,string>={'检查':'#e07b3c','药品':'#10b981','治疗':'#0ea5e9','手术':'#f59e0b','耗材':'#8b5cf6','处置':'#f43f5e','服务':'#06b6d4','预防':'#14b8a6'};
+    return m[c]||'#8c857c';
   }
   function upcomingCount(items: any[], dateField: string): number {
     const now = new Date();

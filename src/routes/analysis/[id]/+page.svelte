@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import { formatCurrency, formatDate, priceLevelBadge } from '$lib/utils/format';
+  import { formatCurrency, formatDate, priceLevelBadge, priceLevelIcon, necessityBadge } from '$lib/utils/format';
   import { markdownToHtml } from '$lib/utils/markdown';
   import { pets, loadPets } from '$lib/stores/pets';
 
@@ -170,6 +170,29 @@
     return item.price_level === '偏高' || item.price_level === '略高';
   }
 
+  /** 分类视觉配置：图标 + 进度条颜色 + badge 样式 */
+  const CATEGORY_CONFIG: Record<string, { icon: string; barClass: string; badgeClass: string }> = {
+    '检查': { icon: '🔬', barClass: 'bg-brand-500', badgeClass: 'badge-cat-check' },
+    '药品': { icon: '💊', barClass: 'bg-emerald-500', badgeClass: 'badge-cat-drug' },
+    '治疗': { icon: '💉', barClass: 'bg-sky-500', badgeClass: 'badge-cat-treat' },
+    '手术': { icon: '🏥', barClass: 'bg-amber-500', badgeClass: 'badge-cat-surgery' },
+    '耗材': { icon: '🧤', barClass: 'bg-purple-500', badgeClass: 'badge-cat-supply' },
+    '处置': { icon: '🩹', barClass: 'bg-rose-500', badgeClass: 'badge-cat-proc' },
+    '服务': { icon: '🛎️', barClass: 'bg-cyan-500', badgeClass: 'badge-cat-service' },
+    '预防': { icon: '🛡️', barClass: 'bg-teal-500', badgeClass: 'badge-cat-prev' },
+  };
+  const DEFAULT_CATEGORY = { icon: '📋', barClass: 'bg-warm-400', badgeClass: 'badge-cat-other' };
+
+  function catIcon(cat: string): string {
+    return CATEGORY_CONFIG[cat]?.icon ?? DEFAULT_CATEGORY.icon;
+  }
+  function catBarClass(cat: string): string {
+    return CATEGORY_CONFIG[cat]?.barClass ?? DEFAULT_CATEGORY.barClass;
+  }
+  function catBadgeClass(cat: string): string {
+    return CATEGORY_CONFIG[cat]?.badgeClass ?? DEFAULT_CATEGORY.badgeClass;
+  }
+
   let categories = $derived.by(() => {
     const cats: Record<string, number> = {};
     for (const item of items) {
@@ -306,13 +329,13 @@
               <div class="flex items-center gap-2 mb-2 flex-wrap">
                 <span class="text-sm font-semibold text-warm-900">{item.raw_name}</span>
                 {#if item.category}
-                  <span class="badge-gray">{item.category}</span>
+                  <span class="badge {catBadgeClass(item.category)}">{catIcon(item.category)} {item.category}</span>
                 {/if}
                 {#if item.necessity}
-                  <span class="badge text-xs">{item.necessity}</span>
+                  <span class={necessityBadge(item.necessity)}>{item.necessity}</span>
                 {/if}
                 {#if item.price_level}
-                  <span class={priceLevelBadge(item.price_level)}>{item.price_level}</span>
+                  <span class={priceLevelBadge(item.price_level)}>{priceLevelIcon(item.price_level)} {item.price_level}</span>
                 {/if}
                 {#if item.is_unknown}
                   <span class="badge-amber">未知项目</span>
@@ -357,20 +380,16 @@
         <div class="space-y-2">
           {#each categories as { cat, amt, pct }}
             <div class="flex items-center gap-3">
-              <span class="text-sm text-warm-600 w-16">{cat}</span>
+              <span class="text-base w-8 text-center" title={cat}>{catIcon(cat)}</span>
+              <span class="text-sm text-warm-600 w-14">{cat}</span>
               <div class="flex-1 h-3 bg-warm-100 rounded-full overflow-hidden">
                 <div
-                  class="h-full rounded-full transition-all"
-                  class:bg-brand-500={cat === '检查'}
-                  class:bg-emerald-500={cat === '药品'}
-                  class:bg-amber-500={cat === '手术'}
-                  class:bg-purple-500={cat === '耗材'}
-                  class:bg-warm-400={cat === '其他' || cat === '处置'}
+                  class="h-full rounded-full transition-all {catBarClass(cat)}"
                   style="width: {pct}%"
                 ></div>
               </div>
-              <span class="text-sm text-warm-900 font-medium w-24 text-right">{formatCurrency(amt)}</span>
-              <span class="text-xs text-warm-400 w-12 text-right">{pct}%</span>
+              <span class="text-sm text-warm-900 font-medium w-24 text-right tabular-nums">{formatCurrency(amt)}</span>
+              <span class="text-xs text-warm-400 w-12 text-right tabular-nums">{pct}%</span>
             </div>
           {/each}
         </div>

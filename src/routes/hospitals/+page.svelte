@@ -154,6 +154,7 @@
 
 <div class="max-w-5xl mx-auto space-y-6">
   <h1 class="text-xl font-bold text-warm-900">🏥 医院推荐</h1>
+<div class="card bg-gradient-to-r from-teal-50 to-white border-teal-100 mb-4 px-4 py-3"><div><h3 class="font-semibold text-sm text-teal-800">附近医院搜索</h3><p class="text-xs text-warm-500 mt-0.5 leading-relaxed">基于高德地图搜索附近宠物医院，查看用户评价、价格水平和特色服务，支持一键导航。</p></div></div>
 
   {#if amapKey}
     <!-- 位置选择 -->

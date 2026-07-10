@@ -5,7 +5,7 @@
 export interface BillItem {
   rawName: string;
   amount: number;
-  category?: '检查' | '药品' | '耗材' | '手术' | '其他';
+  category?: '检查' | '药品' | '治疗' | '手术' | '耗材' | '处置' | '服务' | '预防' | '其他';
 }
 
 export interface AnalysisInput {

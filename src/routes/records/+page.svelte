@@ -43,7 +43,8 @@
   <div class="flex items-center justify-between">
     <h1 class="text-xl font-bold text-warm-900">📋 就诊记录</h1>
     <a href="/upload" class="btn-primary text-sm">+ 新建分析</a>
-  </div>
+    </div>
+<div class="card bg-gradient-to-r from-sky-50 to-white border-sky-100 mb-4 px-4 py-3"><div><h3 class="font-semibold text-sm text-sky-800">历史就诊档案</h3><p class="text-xs text-warm-500 mt-0.5 leading-relaxed">查看所有历史就诊记录、费用明细和分析报告，支持按时间/医院/费用筛选，转院时一键导出资料包。</p></div></div>
 
   {#if loading}
     <div class="card text-center py-12 text-warm-500">加载中...</div>

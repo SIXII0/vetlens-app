@@ -1,15 +1,22 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import { SCHEMA_SQL } from './schema';
-
-const DB_PATH = process.env.VETLENS_DB_PATH || path.join(process.cwd(), 'data', 'vetlens.db');
+import { env } from '$env/dynamic/private';
 
 let _db: Database.Database | null = null;
+let _dbPath: string | null = null;
+
+function resolveDbPath(): string {
+  // 在运行时解析路径（确保 .env 已加载）
+  return env.VETLENS_DB_PATH
+    || (env.DATA_DIR ? path.join(env.DATA_DIR, 'vetlens.db') : path.join(process.cwd(), 'data', 'vetlens.db'));
+}
 
 export function getDb(): Database.Database {
   if (!_db) {
-    const dbPath = DB_PATH;
-    _db = new Database(dbPath);
+    _dbPath = resolveDbPath();
+    console.log(`[VetLens] 数据库路径: ${_dbPath}`);
+    _db = new Database(_dbPath);
     _db.pragma('journal_mode = WAL');
     _db.pragma('foreign_keys = ON');
     _db.pragma('busy_timeout = 5000');
@@ -20,10 +27,15 @@ export function getDb(): Database.Database {
   return _db;
 }
 
+export function getDbPath(): string {
+  return _dbPath || resolveDbPath();
+}
+
 export function closeDb(): void {
   if (_db) {
     _db.close();
     _db = null;
+    _dbPath = null;
   }
 }
 

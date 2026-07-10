@@ -102,7 +102,7 @@ function runQa(md: string, type: ReportType, items?: AnalyzedItem[]): QaResult {
   const found = FORBIDDEN_TERMS.filter(t => md.includes(t));
   checks.push({ rule:'禁止术语', passed:found.length===0,
     detail:found.length===0?'通过':`发现: ${found.join(',')}` });
-  for (const s of ['使用材料','事实','整理结果','待确认','后续建议']) {
+  for (const s of ['事实与材料','整理结果','待确认','后续建议']) {
     const ok = md.includes(`## ${s}`);
     checks.push({ rule:`章节:${s}`, passed:ok, detail:ok?'已包含':'缺失' });
     if (!ok) warnings.push(`缺少必要章节: ${s}`);

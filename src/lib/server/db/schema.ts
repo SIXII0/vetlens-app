@@ -212,6 +212,8 @@ CREATE TABLE IF NOT EXISTS health_scores (
   kidney_score      REAL,  -- 肾功能得分 0-100
   pancreas_score    REAL,  -- 血糖+胰腺得分 0-100
   cbc_score         REAL,  -- 血常规得分 0-100
+  weight_score      REAL,  -- 体重评分 0-100
+  age_score         REAL,  -- 年龄评分 0-100
   overall_score     REAL,  -- 加权综合得分 0-100
   grade              TEXT,  -- A+/A/B/C/D
   notes         TEXT,

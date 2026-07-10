@@ -60,6 +60,27 @@
   .badge-blue  { background: #dbeafe; color: #1d4ed8; }
   .badge-gray  { background: #e8e4df; color: #6b655e; }
 
+  /* 分类 badge */
+  .badge-cat-check  { background: #fef0e6; color: #9e4f25; }
+  .badge-cat-drug   { background: #d1fae5; color: #047857; }
+  .badge-cat-treat  { background: #e0f2fe; color: #0369a1; }
+  .badge-cat-surgery{ background: #fef3c7; color: #a16207; }
+  .badge-cat-supply { background: #ede9fe; color: #6d28d9; }
+  .badge-cat-proc   { background: #ffe4e6; color: #be123c; }
+  .badge-cat-service{ background: #cffafe; color: #0e7490; }
+  .badge-cat-prev   { background: #ccfbf1; color: #0f766e; }
+  .badge-cat-other  { background: #f5f3f0; color: #6b655e; }
+
+  /* 价格合理性 badge */
+  .badge-price-ok   { background: #d1fae5; color: #047857; }
+  .badge-price-warn { background: #fef3c7; color: #a16207; }
+  .badge-price-high { background: #ffe4e6; color: #be123c; }
+
+  /* 必要性 badge */
+  .badge-nec-must   { background: #fee2e2; color: #b91c1c; }
+  .badge-nec-suggest{ background: #fef3c7; color: #a16207; }
+  .badge-nec-opt    { background: #d1fae5; color: #047857; }
+
   .skeleton { @apply rounded-lg animate-pulse; background: #e8e4df; }
 }
 

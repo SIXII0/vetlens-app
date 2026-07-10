@@ -9,12 +9,15 @@
 import fs from 'fs';
 import path from 'path';
 import { getDb } from '../db/index';
+import { env } from '$env/dynamic/private';
 
-const EXTERNAL_DIR = path.join(process.cwd(), '..');
+function getExternalDir(): string {
+  return env.EXTERNAL_DATA_DIR || (env.DATA_DIR ? path.join(env.DATA_DIR, '..') : path.join(process.cwd(), '..'));
+}
 
 /** 导入 120 条术语种子数据 */
 export function importTermSeeds(): number {
-  const filePath = path.join(EXTERNAL_DIR, 'data', 'term_seed_120_unreviewed.jsonl');
+  const filePath = path.join(getExternalDir(), 'data', 'term_seed_120_unreviewed.jsonl');
   if (!fs.existsSync(filePath)) {
     console.warn(`[Import] 术语种子文件不存在: ${filePath}`);
     return 0;
@@ -67,7 +70,7 @@ export function importTermSeeds(): number {
 
 /** 导入保险产品种子数据 */
 export function importInsuranceSeeds(): number {
-  const filePath = path.join(EXTERNAL_DIR, 'data', 'insurance_policy_seed.json');
+  const filePath = path.join(getExternalDir(), 'data', 'insurance_policy_seed.json');
   if (!fs.existsSync(filePath)) return 0;
 
   const db = getDb();
@@ -127,7 +130,7 @@ export function importInsuranceSeeds(): number {
 
 /** 导入品种遗传风险数据 */
 export function importBreedRisks(): number {
-  const filePath = path.join(EXTERNAL_DIR, 'data', 'breed_genetic_risk_seed_unreviewed.json');
+  const filePath = path.join(getExternalDir(), 'data', 'breed_genetic_risk_seed_unreviewed.json');
   if (!fs.existsSync(filePath)) return 0;
 
   const db = getDb();
@@ -163,22 +166,11 @@ export function importBreedRisks(): number {
   return count;
 }
 
-/** 从 kb_terms 表重建 FTS5 索引 */
+/** 从 kb_terms 表重建 FTS5 索引 — 使用 'rebuild' 命令（外部内容表正确方式） */
 function rebuildFtsFromTable() {
   const db = getDb();
-  const rows = db.prepare('SELECT rowid, name, aliases, plain_explain FROM kb_terms').all() as Array<{
-    rowid: number; name: string; aliases: string | null; plain_explain: string | null;
-  }>;
-
-  // 清空并重建
-  db.prepare('DELETE FROM kb_terms_fts').run();
-  const insert = db.prepare(
-    'INSERT INTO kb_terms_fts (rowid, name, aliases, plain_explain) VALUES (?, ?, ?, ?)'
-  );
-  for (const r of rows) {
-    insert.run(r.rowid, r.name, r.aliases || '', r.plain_explain || '');
-  }
-  console.log(`[Import] FTS5 索引重建完成: ${rows.length} 条`);
+  db.prepare("INSERT INTO kb_terms_fts(kb_terms_fts) VALUES('rebuild')").run();
+  console.log('[Import] FTS5 索引已通过 rebuild 命令重建');
 }
 
 /** 一次性导入所有外部知识库 */

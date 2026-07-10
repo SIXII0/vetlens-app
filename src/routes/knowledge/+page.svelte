@@ -47,39 +47,43 @@
     <h2 class="text-lg font-bold text-warm-900 mb-4">分类浏览</h2>
 
     <!-- Row 1 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
       <a href="/knowledge/diseases" class="group card hover:shadow-raised hover:-translate-y-0.5 transition-all duration-200 no-underline">
-        <span class="text-3xl mb-3 block">🩺</span>
+        <span class="text-2xl mb-2 block">🩺</span>
         <h3 class="font-bold text-warm-900 group-hover:text-brand-600 transition-colors">疾病</h3>
-        <p class="text-sm text-warm-500 mt-1">按名称、品种、症状或身体系统搜索，每条资料都附出处。</p>
+        <p class="text-xs text-warm-500 mt-1">按名称、品种、症状搜索，每条资料附出处。</p>
       </a>
       <a href="/knowledge/symptoms" class="group card hover:shadow-raised hover:-translate-y-0.5 transition-all duration-200 no-underline">
-        <span class="text-3xl mb-3 block">🔍</span>
+        <span class="text-2xl mb-2 block">🔍</span>
         <h3 class="font-bold text-warm-900 group-hover:text-brand-600 transition-colors">症状</h3>
-        <p class="text-sm text-warm-500 mt-1">从观察到的症状入手，反查可能的疾病。</p>
+        <p class="text-xs text-warm-500 mt-1">从观察到的症状入手，反查可能的疾病。</p>
+      </a>
+      <a href="/knowledge/terms" class="group card hover:shadow-raised hover:-translate-y-0.5 transition-all duration-200 no-underline">
+        <span class="text-2xl mb-2 block">📋</span>
+        <h3 class="font-bold text-warm-900 group-hover:text-brand-600 transition-colors">诊疗项目</h3>
+        <p class="text-xs text-warm-500 mt-1">常见检查、药品、治疗的通俗解释和必要性。</p>
       </a>
     </div>
 
     <!-- Row 2 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
       <a href="/knowledge/breeds" class="group card hover:shadow-raised hover:-translate-y-0.5 transition-all duration-200 no-underline">
-        <span class="text-3xl mb-3 block">🧬</span>
+        <span class="text-2xl mb-2 block">🧬</span>
         <h3 class="font-bold text-warm-900 group-hover:text-brand-600 transition-colors">品种</h3>
-        <p class="text-sm text-warm-500 mt-1">品种高发疾病、遗传检测与饲养需求。</p>
+        <p class="text-xs text-warm-500 mt-1">品种高发疾病、遗传检测与饲养需求。</p>
       </a>
       <a href="/knowledge/drugs" class="group card hover:shadow-raised hover:-translate-y-0.5 transition-all duration-200 no-underline">
-        <span class="text-3xl mb-3 block">💊</span>
+        <span class="text-2xl mb-2 block">💊</span>
         <h3 class="font-bold text-warm-900 group-hover:text-brand-600 transition-colors">药物</h3>
-        <p class="text-sm text-warm-500 mt-1">数百种兽医药物的剂量、副作用与交互作用。</p>
+        <p class="text-xs text-warm-500 mt-1">数百种兽医药物的剂量、副作用与交互作用。</p>
+      </a>
+      <a href="/knowledge/care-guides" class="group card hover:shadow-raised hover:-translate-y-0.5 transition-all duration-200 no-underline">
+        <span class="text-2xl mb-2 block">💟</span>
+        <h3 class="font-bold text-warm-900 group-hover:text-brand-600 transition-colors">护理指南</h3>
+        <p class="text-xs text-warm-500 mt-1">主人易读、兽医级准确的日常护理指导。</p>
       </a>
     </div>
 
-    <!-- Row 3: Full-width -->
-    <a href="/knowledge/care-guides" class="group card hover:shadow-raised hover:-translate-y-0.5 transition-all duration-200 no-underline block">
-      <span class="text-3xl mb-3 block">💟</span>
-      <h3 class="font-bold text-warm-900 group-hover:text-brand-600 transition-colors">宠物护理指南</h3>
-      <p class="text-sm text-warm-500 mt-1">主人易读、兽医级准确的文章，与疾病、药物、品种及症状数据库互相链接。</p>
-    </a>
   </section>
 
   <!-- ── 我们如何构建 ── -->

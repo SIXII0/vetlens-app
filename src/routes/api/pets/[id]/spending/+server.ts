@@ -70,18 +70,20 @@ export const GET: RequestHandler = async ({ params, url }) => {
   `).get(petId) as any;
 
   if (policy) {
-    // 计算可赔付总额：只含检查/药品/手术/治疗/耗材类，排除预防/服务类
+    // 计算可赔付总额：含检查/药品/手术/治疗/耗材/处置类，排除预防/服务类
     const coverableRow = db.prepare(`
       SELECT COALESCE(SUM(li.amount), 0) AS coverable_total
       FROM line_items li
       JOIN records r ON li.record_id = r.id
       WHERE r.pet_id = ?
         AND cast(strftime('%Y', r.visit_date) AS integer) = ?
-        AND (li.category IN ('检查','药品','手术','治疗','耗材')
+        AND (li.category IN ('检查','药品','手术','治疗','耗材','处置')
              OR (li.category = '其他' AND li.raw_name NOT LIKE '%疫苗%'
                   AND li.raw_name NOT LIKE '%驱虫%'
                   AND li.raw_name NOT LIKE '%体检%'
-                  AND li.raw_name NOT LIKE '%美容%'))
+                  AND li.raw_name NOT LIKE '%美容%'
+                  AND li.raw_name NOT LIKE '%洗澡%'
+                  AND li.raw_name NOT LIKE '%寄养%'))
     `).get(petId, year) as { coverable_total: number };
 
     const deductible = policy.deductible || 0;

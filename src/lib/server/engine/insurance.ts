@@ -132,7 +132,7 @@ function checkSingleItem(policy: InsurancePolicy, item: AnalyzedItem): Insurance
   }
 
   // 关键词兜底：预防性项目
-  const preventiveKeywords = ['疫苗', '驱虫', '体检', '美容', '洗澡', '粮食', '零食', '营养膏', '保健品'];
+  const preventiveKeywords = ['疫苗', '驱虫', '体检', '美容', '洗澡', '寄养', '粮食', '零食', '营养膏', '保健品'];
   for (const kw of preventiveKeywords) {
     if (item.rawName.includes(kw)) {
       return { itemName: item.rawName, amount: item.amount, coverable: false,
@@ -140,8 +140,8 @@ function checkSingleItem(policy: InsurancePolicy, item: AnalyzedItem): Insurance
     }
   }
 
-  // 可赔付类别
-  const coverableCategories = ['检查', '药品', '手术', '治疗', '耗材'];
+  // 可赔付类别：医疗必需类（不含预防/服务）
+  const coverableCategories = ['检查', '药品', '手术', '治疗', '耗材', '处置'];
   if (coverableCategories.includes(category)) {
     return { itemName: item.rawName, amount: item.amount, coverable: true,
       reason: `${category}类项目，通常在保障范围内`,

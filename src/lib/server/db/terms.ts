@@ -59,21 +59,13 @@ export function insertTerms(terms: Omit<TermRow, 'created_at'>[]): number {
   return count;
 }
 
-/** 重建 FTS5 索引 */
-function rebuildFtsIndex(terms: Array<{ name: string; aliases: string; plain_explain: string }>) {
+/** 重建 FTS5 索引 — 使用 SQLite 外部内容表的 'rebuild' 命令 */
+function rebuildFtsIndex(_terms: Array<{ name: string; aliases: string; plain_explain: string }>) {
   const db = getDb();
-  // 清空 FTS 索引
-  db.prepare('DELETE FROM kb_terms_fts').run();
-  // 重新插入
-  const insert = db.prepare(
-    'INSERT INTO kb_terms_fts (name, aliases, plain_explain) VALUES (?, ?, ?)'
-  );
-  const rebuild = db.transaction(() => {
-    for (const t of terms) {
-      insert.run(t.name, t.aliases, t.plain_explain);
-    }
-  });
-  rebuild();
+  // 外部内容 FTS5 表 (content='kb_terms') 必须用 'rebuild' 命令重建索引
+  // 不能使用 DELETE + INSERT，否则会破坏 content_rowid 映射
+  db.prepare("INSERT INTO kb_terms_fts(kb_terms_fts) VALUES('rebuild')").run();
+  console.log('[VetLens] FTS5 索引已通过 rebuild 命令重建');
 }
 
 /** FTS5 全文搜索术语 —— 增强版，支持多种查询模式 */
@@ -110,7 +102,9 @@ export function searchTerms(query: string, limit = 10): TermRow[] {
       if (prefixRows.length > 0) return prefixRows;
     }
 
-    return [];
+    // FTS5 无结果（中文分词器限制等），回退到 LIKE 搜索
+    console.debug('[VetLens] FTS5 无匹配，回退 LIKE');
+    return fallbackSearch(query, limit);
   } catch (err) {
     console.warn('[VetLens] FTS5 搜索异常，回退到 LIKE 查询:', err);
     return fallbackSearch(query, limit);
